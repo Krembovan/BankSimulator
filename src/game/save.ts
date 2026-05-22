@@ -3,6 +3,21 @@ import { STOCK_LIST, PROPERTIES_MARKET, CRYPTO_LIST } from '../types';
 
 const SAVE_KEY = 'bank-simulator-save';
 
+function migrateState(state: any): GameState {
+  const defaults = createInitialState();
+
+  state.cryptoPortfolio = state.cryptoPortfolio ?? [];
+  state.cryptos = state.cryptos ?? defaults.cryptos;
+  state.lastExpenseDay = state.lastExpenseDay ?? 0;
+  state.sideHustle = state.sideHustle ?? null;
+
+  if (!state.cryptos || state.cryptos.length === 0) {
+    state.cryptos = CRYPTO_LIST.map(c => ({ ...c }));
+  }
+
+  return state as GameState;
+}
+
 export function createInitialState(): GameState {
   return {
     day: 1,
@@ -51,8 +66,8 @@ export function loadGame(): GameState | null {
   try {
     const data = localStorage.getItem(SAVE_KEY);
     if (data) {
-      const parsed = JSON.parse(data) as GameState;
-      return parsed;
+      const parsed = JSON.parse(data);
+      return migrateState(parsed);
     }
   } catch {
     console.error('Failed to load game');
