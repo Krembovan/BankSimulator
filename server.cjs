@@ -18,43 +18,54 @@ const MIME = {
   '.woff2': 'font/woff2',
 };
 
+function safeRespond(res, status, contentType, data) {
+  try {
+    res.writeHead(status, { 'Content-Type': contentType });
+    res.end(data);
+  } catch {
+    // client disconnected, nothing to do
+  }
+}
+
 function serveFile(res, filePath, fallbackToIndex = false) {
   fs.readFile(filePath, (err, data) => {
     if (err) {
       if (err.code === 'ENOENT' && fallbackToIndex) {
         const idx = path.join(DIST_DIR, 'index.html');
         fs.readFile(idx, (e2, d2) => {
-          if (e2) { res.writeHead(500); res.end('Error'); return; }
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(d2);
+          if (e2) { safeRespond(res, 500, 'text/plain', 'Error'); return; }
+          safeRespond(res, 200, 'text/html; charset=utf-8', d2);
         });
       } else {
-        res.writeHead(404);
-        res.end('Not found');
+        safeRespond(res, 404, 'text/plain', 'Not found');
       }
       return;
     }
     const ext = path.extname(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
-    res.end(data);
+    safeRespond(res, 200, MIME[ext] || 'application/octet-stream', data);
   });
 }
 
 const srv = http.createServer((req, res) => {
+  res.on('error', () => {});
+  req.on('error', () => {});
+
   let url = req.url === '/' ? '/index.html' : req.url;
-  // Handle SPA routing — any non-file route serves index.html
   const hasExt = path.extname(url) !== '';
   const filePath = path.join(DIST_DIR, url);
   if (!hasExt) {
     const idx = path.join(DIST_DIR, 'index.html');
     fs.readFile(idx, (e, d) => {
-      if (e) { res.writeHead(500); res.end('Error'); return; }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(d);
+      if (e) { safeRespond(res, 500, 'text/plain', 'Error'); return; }
+      safeRespond(res, 200, 'text/html; charset=utf-8', d);
     });
     return;
   }
   serveFile(res, filePath, true);
+});
+
+srv.on('error', (err) => {
+  console.error('Server error:', err.message);
 });
 
 srv.listen(PORT, '0.0.0.0', () => {
