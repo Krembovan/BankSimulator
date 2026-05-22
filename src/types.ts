@@ -1,6 +1,7 @@
 export interface GameState {
   day: number;
   cash: number;
+  dirtyCash: number;
   job: string | null;
   jobIndex: number;
   daysAtJob: number;
@@ -21,6 +22,8 @@ export interface GameState {
   highestNetWorth: number;
   lastExpenseDay: number;
   sideHustle: SideHustle | null;
+  shadowJob: ShadowJob | null;
+  riskLevel: number;
   eventLog: string[];
   achievements: string[];
   marketData: MarketDay[];
@@ -71,6 +74,13 @@ export interface Crypto {
 export interface SideHustle {
   name: string;
   dailyPay: number;
+  daysActive: number;
+}
+
+export interface ShadowJob {
+  name: string;
+  dailyIncome: number;
+  riskPerDay: number;
   daysActive: number;
 }
 
@@ -270,6 +280,24 @@ export const SIDE_HUSTLES = [
   { name: 'Консультации', pay: 60 },
   { name: 'Частные уроки', pay: 35 },
   { name: 'Такси (по выходным)', pay: 30 },
+];
+
+export const SHADOW_JOBS = [
+  { name: 'Мелкое мошенничество', income: 60, risk: 2 },
+  { name: 'Подпольные ставки', income: 90, risk: 3 },
+  { name: 'Перепродажа краденого', income: 140, risk: 4 },
+  { name: 'Хакерство', income: 200, risk: 3 },
+  { name: 'Организация подпольного казино', income: 300, risk: 5 },
+  { name: 'Торговля оружием', income: 500, risk: 7 },
+];
+
+export const BLACK_MARKET_ITEMS = [
+  { name: 'Краденый телефон', price: 200, cleanPrice: 500 },
+  { name: 'Краденый ноутбук', price: 500, cleanPrice: 1200 },
+  { name: 'Поддельные документы', price: 1000, cleanPrice: 3000 },
+  { name: 'Краденый велосипед', price: 150, cleanPrice: 400 },
+  { name: 'Контрабандные часы', price: 2000, cleanPrice: 5000 },
+  { name: 'Краденый инструмент', price: 300, cleanPrice: 800 },
 ];
 
 const EDUCATION_COST = 5000;

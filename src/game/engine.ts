@@ -1,6 +1,6 @@
 import type { GameState } from '../types';
-import { JOB_LIST, VEHICLES_LIST, BUSINESSES_LIST, EDUCATION_COST, EDUCATION_NAMES, SIDE_HUSTLES } from '../types';
-import { checkRandomEvent, checkAchievements, getNetWorth, getAchievementName, applyMonthlyExpenses, checkCareerEvent } from './events';
+import { JOB_LIST, VEHICLES_LIST, BUSINESSES_LIST, EDUCATION_COST, EDUCATION_NAMES, SIDE_HUSTLES, SHADOW_JOBS } from '../types';
+import { checkRandomEvent, checkAchievements, getNetWorth, getAchievementName, applyMonthlyExpenses, checkCareerEvent, checkPoliceRaid, checkShadowOpportunity } from './events';
 
 export function advanceDay(state: GameState): GameState {
   const s = JSON.parse(JSON.stringify(state)) as GameState;
@@ -33,6 +33,18 @@ export function advanceDay(state: GameState): GameState {
     s.totalEarned += hustlePay;
     s.sideHustle.daysActive += 1;
     s.performance = Math.max(0, s.performance - 2);
+  }
+
+  if (s.shadowJob !== null) {
+    const income = s.shadowJob.dailyIncome + Math.floor(Math.random() * 15);
+    s.dirtyCash += income;
+    s.totalEarned += income;
+    s.shadowJob.daysActive += 1;
+    s.riskLevel = Math.min(100, s.riskLevel + s.shadowJob.riskPerDay);
+  }
+
+  if (s.riskLevel > 0 && s.shadowJob === null) {
+    s.riskLevel = Math.max(0, s.riskLevel - 2);
   }
 
   s.cash += s.savings * (0.025 / 365);
@@ -103,6 +115,13 @@ export function advanceDay(state: GameState): GameState {
     applyMonthlyExpenses(s);
   }
 
+  const policeResult = checkPoliceRaid(s);
+  if (policeResult.showEvent) {
+    s.showEvent = true;
+    s.eventMessage = policeResult.eventMessage;
+    s.eventType = policeResult.eventType;
+  }
+
   const careerResult = checkCareerEvent(s);
   if (careerResult.showEvent) {
     s.showEvent = true;
@@ -115,6 +134,13 @@ export function advanceDay(state: GameState): GameState {
 
   s.marketData.push({ day: s.day, netWorth: nw, cash: s.cash });
   if (s.marketData.length > 500) s.marketData.shift();
+
+  const shadowOppResult = checkShadowOpportunity(s);
+  if (shadowOppResult.showEvent) {
+    s.showEvent = true;
+    s.eventMessage = shadowOppResult.eventMessage;
+    s.eventType = shadowOppResult.eventType;
+  }
 
   const newAchievements = checkAchievements(s);
   newAchievements.forEach(a => {
@@ -248,6 +274,37 @@ export function stopSideHustle(state: GameState): GameState {
     s.eventLog.push(`День ${s.day}: Закончена подработка: ${s.sideHustle.name} (${s.sideHustle.daysActive} дней)`);
     s.sideHustle = null;
   }
+  return s;
+}
+
+export function startShadowJob(state: GameState, jobIndex: number): GameState {
+  const s = { ...state };
+  const job = SHADOW_JOBS[jobIndex];
+  if (!job) return state;
+  s.shadowJob = { name: job.name, dailyIncome: job.income, riskPerDay: job.risk, daysActive: 0 };
+  s.eventLog.push(`День ${s.day}: 🕶️ Начато теневое дело: ${job.name} ($${job.income}/день, риск +${job.risk}/день)`);
+  return s;
+}
+
+export function stopShadowJob(state: GameState): GameState {
+  const s = { ...state };
+  if (s.shadowJob) {
+    s.eventLog.push(`День ${s.day}: Закончено теневое дело: ${s.shadowJob.name} (${s.shadowJob.daysActive} дней)`);
+    s.shadowJob = null;
+  }
+  return s;
+}
+
+export function launderMoney(state: GameState, amount: number): GameState {
+  const s = { ...state };
+  if (amount <= 0 || amount > s.dirtyCash) return state;
+  const fee = Math.round(amount * 0.3);
+  const clean = amount - fee;
+  s.dirtyCash -= amount;
+  s.cash += clean;
+  s.totalEarned += clean;
+  s.riskLevel = Math.max(0, s.riskLevel - Math.round(amount / 2000));
+  s.eventLog.push(`День ${s.day}: 🧼 Отмыто $${amount} (комиссия $${fee}, получено $${clean})`);
   return s;
 }
 

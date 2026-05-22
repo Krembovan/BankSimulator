@@ -139,6 +139,38 @@ export function checkCareerEvent(state: GameState): GameState {
   return state;
 }
 
+export function checkPoliceRaid(state: GameState): GameState {
+  if (state.riskLevel <= 0) return state;
+  const raidChance = state.riskLevel / 500;
+  if (Math.random() < raidChance) {
+    const fine = Math.round(state.dirtyCash * (0.3 + Math.random() * 0.4));
+    const confiscated = Math.round(state.dirtyCash * (0.1 + Math.random() * 0.3));
+    state.dirtyCash = Math.max(0, state.dirtyCash - confiscated);
+    state.cash = Math.max(0, state.cash - fine);
+    state.riskLevel = Math.max(0, state.riskLevel - 30);
+    state.eventLog.push(`День ${state.day}: 🚔 Полицейский рейд! Штраф $${fine}, конфисковано $${confiscated}`);
+    return { ...state, showEvent: true, eventMessage: `🚔 Полицейский рейд! Штраф $${fine}, конфисковано $${confiscated} грязных денег.`, eventType: 'bad' };
+  }
+  return state;
+}
+
+export function checkShadowOpportunity(state: GameState): GameState {
+  if (Math.random() < 0.03 && state.cash > 0) {
+    const item = SHADOW_OPPORTUNITIES[Math.floor(Math.random() * SHADOW_OPPORTUNITIES.length)];
+    state.eventLog.push(`День ${state.day}: ${item.msg}`);
+    return { ...state, showEvent: true, eventMessage: item.msg, eventType: 'info' };
+  }
+  return state;
+}
+
+const SHADOW_OPPORTUNITIES = [
+  { msg: '💀 Нашёлся покупатель на краденый товар. Рискованно, но прибыльно.' },
+  { msg: '🕵️ Знакомый предлагает «лёгкие деньги». Риск — дело благородное.' },
+  { msg: '🌐 В даркнете новый заказ. Хороший заработок, но следы остаются.' },
+  { msg: '🎰 Подпольное казино ищет партнёра. Доля — 60% с риском 50/50.' },
+  { msg: '📦 Контрабанда на границе. Требуется курьер с холодной головой.' },
+];
+
 export function checkAchievements(state: GameState): string[] {
   const newAchievements: string[] = [];
   const nw = getNetWorth(state);
@@ -160,6 +192,10 @@ export function checkAchievements(state: GameState): string[] {
   if (state.properties.length >= 10 && !state.achievements.includes('real_estate_mogul')) newAchievements.push('real_estate_mogul');
   if (state.vehicles.length >= 5 && !state.achievements.includes('garage_king')) newAchievements.push('garage_king');
   if (state.stockPortfolio.reduce((a, sp) => { const st = state.stocks.find(s => s.symbol === sp.symbol); return a + (st ? st.price * sp.shares : 0); }, 0) >= 100000 && !state.achievements.includes('stock_whale')) newAchievements.push('stock_whale');
+  if (state.shadowJob !== null && state.shadowJob.daysActive >= 30 && !state.achievements.includes('criminal')) newAchievements.push('criminal');
+  if (state.riskLevel >= 80 && !state.achievements.includes('wanted')) newAchievements.push('wanted');
+  if (state.dirtyCash >= 100000 && !state.achievements.includes('dirty_million')) newAchievements.push('dirty_million');
+  if (state.dirtyCash >= 50000 && !state.achievements.includes('dirty_fifty')) newAchievements.push('dirty_fifty');
 
   return newAchievements;
 }
@@ -167,7 +203,7 @@ export function checkAchievements(state: GameState): string[] {
 import { JOB_LIST } from '../types';
 
 export function getNetWorth(state: GameState): number {
-  let total = state.cash + state.checking + state.savings;
+  let total = state.cash + state.checking + state.savings + state.dirtyCash;
 
   state.cds.forEach(cd => total += cd.amount);
   state.stockPortfolio.forEach(sp => {
@@ -204,6 +240,10 @@ const ACHIEVEMENT_NAMES: Record<string, string> = {
   real_estate_mogul: '🏘️ Девелопер — Владейте 10+ объектами',
   garage_king: '🏎️ Автокороль — Владейте 5+ авто',
   stock_whale: '🐋 Кит — Акций на $100K+',
+  criminal: '🔫 Преступник — 30 дней в теневом бизнесе',
+  wanted: '🚨 В розыске — Риск 80+',
+  dirty_fifty: '💵 Тёмная половинка — $50K грязных денег',
+  dirty_million: '💰 Грязный миллион — $100K грязных денег',
 };
 
 export function getAchievementName(id: string): string {

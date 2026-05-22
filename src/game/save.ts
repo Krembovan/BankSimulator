@@ -10,6 +10,9 @@ function migrateState(state: any): GameState {
   state.cryptos = state.cryptos ?? defaults.cryptos;
   state.lastExpenseDay = state.lastExpenseDay ?? 0;
   state.sideHustle = state.sideHustle ?? null;
+  state.dirtyCash = state.dirtyCash ?? 0;
+  state.riskLevel = state.riskLevel ?? 0;
+  state.shadowJob = state.shadowJob ?? null;
 
   if (!state.cryptos || state.cryptos.length === 0) {
     state.cryptos = CRYPTO_LIST.map(c => ({ ...c }));
@@ -42,6 +45,9 @@ export function createInitialState(): GameState {
     highestNetWorth: 2000,
     lastExpenseDay: 0,
     sideHustle: null,
+    shadowJob: null,
+    riskLevel: 0,
+    dirtyCash: 0,
     eventLog: ['Добро пожаловать в Bank Simulator! Ваш путь к $10M начинается сегодня.'],
     achievements: [],
     marketData: [{ day: 1, netWorth: 2000, cash: 2000 }],

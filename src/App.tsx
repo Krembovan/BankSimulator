@@ -13,6 +13,7 @@ import Vehicles from './components/Vehicles';
 import Business from './components/Business';
 import Profile from './components/Profile';
 import Crypto from './components/Crypto';
+import Shadow from './components/Shadow';
 import EventModal from './components/EventModal';
 
 export default function App() {
@@ -134,6 +135,7 @@ export default function App() {
       case 'vehicles': return <Vehicles state={state} setState={setState} />;
       case 'crypto': return <Crypto state={state} setState={setState} />;
       case 'business': return <Business state={state} setState={setState} />;
+      case 'shadow': return <Shadow state={state} setState={setState} />;
       case 'profile': return <Profile state={state} setState={setState} />;
       default: return <Dashboard state={state} onAdvanceDay={handleAdvanceDay} onToggleAuto={() => setAutoMode(!autoMode)} autoMode={autoMode} />;
     }

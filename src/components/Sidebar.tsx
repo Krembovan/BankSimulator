@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { id: 'realestate', label: 'Недвижимость', icon: '🏠' },
   { id: 'vehicles', label: 'Авто', icon: '🚗' },
   { id: 'business', label: 'Бизнес', icon: '🏪' },
+  { id: 'shadow', label: 'Тень', icon: '🕶️' },
 ];
 
 export default function Sidebar({ state, activeTab, onTabChange }: SidebarProps) {
