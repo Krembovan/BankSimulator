@@ -146,7 +146,7 @@ export default function App() {
         {renderContent()}
       </div>
       {state.showEvent && (
-        <EventModal message={state.eventMessage} type={state.eventType} onClose={handleDismissEvent} />
+        <EventModal key={state.eventMessage + state.day} message={state.eventMessage} type={state.eventType} onClose={handleDismissEvent} />
       )}
     </div>
   );

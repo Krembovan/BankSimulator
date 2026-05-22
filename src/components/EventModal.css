@@ -1,51 +1,60 @@
-.modal-overlay {
+.toast {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 100;
-  animation: fadeIn 0.2s ease;
+  gap: 12px;
+  padding: 14px 24px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid;
+  animation: toastIn 0.3s ease;
+  pointer-events: none;
+  max-width: 90vw;
+  white-space: nowrap;
 }
 
-.modal {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  padding: 36px 32px;
-  max-width: 420px;
-  width: 90%;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  animation: fadeIn 0.3s ease;
+.toast-good {
+  background: rgba(6, 78, 59, 0.95);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #d1fae5;
 }
 
-.modal .modal-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+.toast-bad {
+  background: rgba(127, 29, 29, 0.95);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fee2e2;
 }
 
-.modal h2 {
+.toast-info {
+  background: rgba(30, 58, 138, 0.95);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #dbeafe;
+}
+
+.toast-icon {
   font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
-.modal p {
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.6;
-  margin-bottom: 24px;
+.toast-msg {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.modal button {
-  padding: 12px 40px;
-  font-size: 14px;
-  font-weight: 700;
-  border-radius: var(--radius-sm);
-  letter-spacing: 0.3px;
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }

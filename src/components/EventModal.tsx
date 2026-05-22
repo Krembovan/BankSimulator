@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import './EventModal.css';
 
 interface EventModalProps {
@@ -7,18 +8,17 @@ interface EventModalProps {
 }
 
 export default function EventModal({ message, type, onClose }: EventModalProps) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [message, onClose]);
+
   const icons = { good: '🎉', bad: '😬', info: 'ℹ️' };
-  const titles = { good: 'Отлично!', bad: 'О нет!', info: 'Новости рынка' };
-  const btnClass = type === 'good' ? 'btn-success' : type === 'bad' ? 'btn-danger' : 'btn-primary';
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-icon">{icons[type]}</div>
-        <h2>{titles[type]}</h2>
-        <p>{message}</p>
-        <button className={btnClass} onClick={onClose}>OK</button>
-      </div>
+    <div className={`toast toast-${type}`}>
+      <span className="toast-icon">{icons[type]}</span>
+      <span className="toast-msg">{message}</span>
     </div>
   );
 }
