@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "start": "node server.cjs",
-    "pkg:win": "npm run build && pkg server.cjs --target node20-win-x64 --output BankSimulator.exe"
+    "pkg:win": "npm run build && pkg server.cjs --target node20-win-x64 --output BankSimulator.exe",
+    "deploy": "npm run build && npx gh-pages -d dist -m 'Deploy [skip ci]'"
   },
   "dependencies": {
+    "puppeteer": "^24.43.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "recharts": "^3.8.1"
@@ -24,6 +26,7 @@
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "gh-pages": "^6.3.0",
     "globals": "^17.6.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
