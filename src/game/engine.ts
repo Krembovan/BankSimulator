@@ -2,7 +2,7 @@ import type { GameState } from '../types';
 import { JOB_LIST, VEHICLES_LIST, BUSINESSES_LIST, EDUCATION_COSTS, EDUCATION_NAMES, SIDE_HUSTLES, SHADOW_JOBS, BLACK_MARKET_ITEMS, getLoanRate, getLoanLimit, LOAN_PURPOSE_NAMES } from '../types';
 import { checkRandomEvent, checkAchievements, getNetWorth, getAchievementName, applyMonthlyExpenses, checkCareerEvent, checkPoliceRaid, checkShadowOpportunity, checkCollectors, checkTaxAuthority, processPrisonDay } from './events';
 
-export const MAX_ACTIONS = 10;
+export const MAX_ACTIONS = 5;
 
 function spendAP(s: GameState, cost: number): boolean {
   if ((s.actionPoints ?? MAX_ACTIONS) < cost) return false;
