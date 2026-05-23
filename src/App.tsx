@@ -113,7 +113,6 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      {console.log('Rendering app-layout, showTutorial:', showTutorial, 'state.day:', state.day)}
       <Sidebar state={state} activeTab={activeTab} onTabChange={setActiveTab} onRestart={handleNewGame} onShowTutorial={() => setShowTutorial(true)} />
       <div className="app-content">
         {renderContent()}
