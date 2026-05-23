@@ -43,14 +43,11 @@ export default function App() {
   }, []);
 
   const handleNewGame = () => {
-    console.log('handleNewGame called');
     const fresh = createInitialState();
-    console.log('fresh state day:', fresh.day);
     setState(fresh);
     deleteSave();
     setHasSave(false);
     setShowTutorial(true);
-    console.log('showTutorial set to true');
   };
 
   const handleLoadGame = () => {
@@ -108,7 +105,8 @@ export default function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard state={state} onAdvanceDay={handleAdvanceDay} />;
+      case 'dashboard': return <Dashboard state={state} />;
+
       case 'bank': return <Bank state={state} setState={setState} />;
       case 'stocks': return <Stocks state={state} setState={setState} />;
       case 'realestate': return <RealEstate state={state} setState={setState} />;
@@ -117,13 +115,13 @@ export default function App() {
       case 'business': return <Business state={state} setState={setState} />;
       case 'shadow': return <Shadow state={state} setState={setState} />;
       case 'profile': return <Profile state={state} setState={setState} />;
-      default: return <Dashboard state={state} onAdvanceDay={handleAdvanceDay} />;
+      default: return <Dashboard state={state} />;
     }
   };
 
   return (
     <div className="app-layout">
-      <Sidebar state={state} activeTab={activeTab} onTabChange={setActiveTab} onRestart={handleNewGame} onShowTutorial={() => setShowTutorial(true)} />
+      <Sidebar state={state} activeTab={activeTab} onTabChange={setActiveTab} onAdvanceDay={handleAdvanceDay} onRestart={handleNewGame} onShowTutorial={() => setShowTutorial(true)} />
       <div className="app-content">
         {renderContent()}
       </div>

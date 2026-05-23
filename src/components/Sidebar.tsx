@@ -3,11 +3,13 @@ import './Sidebar.css';
 import { getNetWorth } from '../game/events';
 import type { GameState } from '../types';
 import { openReportIssue } from '../game/report';
+import { MAX_ACTIONS } from '../game/engine';
 
 interface SidebarProps {
   state: GameState;
   activeTab: string;
   onTabChange: (tab: string) => void;
+  onAdvanceDay: () => void;
   onRestart: () => void;
   onShowTutorial: () => void;
 }
@@ -24,76 +26,108 @@ const NAV_ITEMS = [
   { id: 'shadow', label: 'Тень', icon: '🕶️' },
 ];
 
-export default function Sidebar({ state, activeTab, onTabChange, onRestart, onShowTutorial }: SidebarProps) {
+export default function Sidebar({ state, activeTab, onTabChange, onAdvanceDay, onRestart, onShowTutorial }: SidebarProps) {
   const [showReport, setShowReport] = useState(false);
   const [showRestartConfirm, setShowRestartConfirm] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [reportText, setReportText] = useState('');
-  const nw = getNetWorth(state);
-  const formatMoney = (n: number) => {
-    if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M';
-    if (n >= 1_000) return '$' + (n / 1_000).toFixed(1) + 'K';
-    return '$' + n.toLocaleString();
-  };
 
   return (
-    <div className="sidebar">
-      <div className="sidebar-header">
-        <div className="logo">
-          <div className="logo-icon">🏦</div>
-          <span className="logo-text">BankSim</span>
-        </div>
-        <div className="subtitle">Строитель империи</div>
-      </div>
-      <nav className="sidebar-nav">
-        {NAV_ITEMS.map(item => (
-          <button
-            key={item.id}
-            className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => onTabChange(item.id)}
-          >
-            <span className="icon">{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
-      </nav>
-      <div className="sidebar-footer">
-        <div className="day-display">
-          📅 День <span className="day-num">{state.day}</span>
-          <div className="sb-btn-group">
-            <button className="sb-text-btn sb-restart-btn" onClick={() => setShowRestartConfirm(true)}>🔄 Сброс</button>
-            <button className="sb-text-btn sb-report-btn" onClick={() => setShowReport(!showReport)}>🐛 Баг</button>
-            <button className="sb-text-btn sb-tutorial-btn" onClick={onShowTutorial}>❓</button>
+    <nav className="topnav">
+      <div className="topnav-inner">
+        <div className="topnav-left">
+          <div className="topnav-logo" onClick={() => onTabChange('dashboard')}>
+            <div className="topnav-logo-icon">B</div>
+            <span className="topnav-logo-text">BankSim</span>
           </div>
-        </div>
-        {showReport && (
-          <div className="sb-report-inline">
-            <textarea
-              className="sb-report-input"
-              placeholder="Опишите баг..."
-              rows={2}
-              value={reportText}
-              onChange={e => setReportText(e.target.value)}
-            />
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button className="btn-primary btn-sm" onClick={() => { openReportIssue(reportText); setReportText(''); setShowReport(false); }} disabled={!reportText.trim()}>Отправить</button>
-              <button className="btn-ghost btn-sm" onClick={() => setShowReport(false)}>Отмена</button>
+
+          <div className="topnav-items">
+            {NAV_ITEMS.slice(0, 6).map(item => (
+              <button
+                key={item.id}
+                className={`topnav-item ${activeTab === item.id ? 'active' : ''}`}
+                onClick={() => onTabChange(item.id)}
+              >
+                <span className="topnav-item-icon">{item.icon}</span>
+                <span className="topnav-item-label">{item.label}</span>
+              </button>
+            ))}
+            <div className="topnav-more-wrap">
+              <button className={`topnav-item ${showMore ? 'active' : ''}`} onClick={() => setShowMore(!showMore)}>
+                <span className="topnav-item-label">...</span>
+              </button>
+              {showMore && (
+                <div className="topnav-dropdown">
+                  {NAV_ITEMS.slice(6).map(item => (
+                    <button
+                      key={item.id}
+                      className={`topnav-dropdown-item ${activeTab === item.id ? 'active' : ''}`}
+                      onClick={() => { onTabChange(item.id); setShowMore(false); }}
+                    >
+                      <span className="topnav-item-icon">{item.icon}</span>
+                      <span className="topnav-item-label">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        )}
-        {showRestartConfirm && (
-          <div className="sb-restart-confirm">
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Начать новую игру? Весь прогресс будет потерян!</span>
-            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+        </div>
+
+        <div className="topnav-right">
+          <div className="topnav-indicators">
+            <div className="topnav-indicator">
+              <span className="topnav-indicator-dot" />
+              <span>День {state.day}</span>
+            </div>
+            <div className="topnav-divider" />
+            <div className="topnav-indicator" style={{ color: 'rgba(250,204,21,0.9)' }}>
+              ⚡ {state.actionPoints}/{MAX_ACTIONS} действий
+            </div>
+            <div className="topnav-indicator" style={{ color: 'var(--accent-green)' }}>
+              💰 {(() => { const n = getNetWorth(state); return n >= 1_000_000 ? '$' + (n / 1_000_000).toFixed(1) + 'M' : n >= 1_000 ? '$' + (n / 1_000).toFixed(1) + 'K' : '$' + n.toLocaleString(); })()}
+            </div>
+          </div>
+
+          <button className="topnav-day-btn" onClick={onAdvanceDay}>
+            ▶ Следующий день
+          </button>
+
+          <div className="topnav-actions">
+            <button className="topnav-action-btn" onClick={() => setShowRestartConfirm(true)} title="Сброс">🔄</button>
+            <button className="topnav-action-btn" onClick={() => setShowReport(!showReport)} title="Баг-репорт">🐛</button>
+            <button className="topnav-action-btn" onClick={onShowTutorial} title="Обучение">❓</button>
+          </div>
+        </div>
+      </div>
+
+      {showReport && (
+        <div className="topnav-report">
+          <textarea
+            className="topnav-report-input"
+            placeholder="Опишите баг..."
+            rows={2}
+            value={reportText}
+            onChange={e => setReportText(e.target.value)}
+          />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="btn-primary btn-sm" onClick={() => { openReportIssue(reportText); setReportText(''); setShowReport(false); }} disabled={!reportText.trim()}>Отправить</button>
+            <button className="btn-ghost btn-sm" onClick={() => setShowReport(false)}>Отмена</button>
+          </div>
+        </div>
+      )}
+
+      {showRestartConfirm && (
+        <div className="topnav-overlay" onClick={() => setShowRestartConfirm(false)}>
+          <div className="topnav-confirm" onClick={e => e.stopPropagation()}>
+            <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Начать новую игру? Весь прогресс будет потерян!</span>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button className="btn-danger btn-sm" onClick={() => { onRestart(); setShowRestartConfirm(false); }}>Да, сбросить</button>
               <button className="btn-ghost btn-sm" onClick={() => setShowRestartConfirm(false)}>Отмена</button>
             </div>
           </div>
-        )}
-        <div className="nw-preview">
-          <div className="label">Капитал</div>
-          <div className="value">{formatMoney(nw)}</div>
         </div>
-      </div>
-    </div>
+      )}
+    </nav>
   );
 }

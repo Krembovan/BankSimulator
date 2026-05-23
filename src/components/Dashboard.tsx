@@ -1,12 +1,10 @@
 import './Dashboard.css';
 import { getNetWorth, getAchievementName } from '../game/events';
-import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import type { GameState } from '../types';
-import { MAX_ACTIONS } from '../game/engine';
 
 interface DashboardProps {
   state: GameState;
-  onAdvanceDay: () => void;
 }
 
 function formatMoney(n: number) {
@@ -15,7 +13,7 @@ function formatMoney(n: number) {
   return '$' + n.toLocaleString();
 }
 
-export default function Dashboard({ state, onAdvanceDay }: DashboardProps) {
+export default function Dashboard({ state }: DashboardProps) {
   const nw = getNetWorth(state);
   const totalAssets = state.cash + state.checking + state.savings +
     state.cds.reduce((a, c) => a + c.amount, 0) +
@@ -27,173 +25,230 @@ export default function Dashboard({ state, onAdvanceDay }: DashboardProps) {
       return a + (stock ? stock.price * sp.shares : 0);
     }, 0);
   const totalDebt = state.loans.reduce((a, l) => a + l.remaining, 0);
+  const startNw = state.marketData.length > 0 ? state.marketData[0].netWorth : nw;
+  const nwChange = startNw > 0 ? ((nw - startNw) / startNw) * 100 : 0;
+
+  const stocksValue = state.stockPortfolio.reduce((a, sp) => {
+    const st = state.stocks.find(s => s.symbol === sp.symbol);
+    return a + (st ? st.price * sp.shares : 0);
+  }, 0);
+  const cryptoValue = state.cryptoPortfolio.reduce((a, cp) => {
+    const c = state.cryptos.find(cr => cr.symbol === cp.symbol);
+    return a + (c ? c.price * cp.coins : 0);
+  }, 0);
+  const propertyValue = state.properties.reduce((a, p) => a + p.currentValue, 0);
+  const businessValue = state.businesses.reduce((a, b) => a + b.value, 0);
+  const cashAndBank = state.cash + state.checking + state.savings;
+  const maxAsset = Math.max(cashAndBank, stocksValue, cryptoValue, propertyValue, businessValue, 1);
 
   const chartData = state.marketData.map(d => ({
     ...d,
     nwFormatted: formatMoney(d.netWorth),
   }));
 
+  const eventTime = (day: number) => {
+    const h = 6 + (day % 24);
+    const m = day % 2 === 0 ? '00' : '30';
+    return `${String(h).padStart(2, '0')}:${m}`;
+  };
+
   return (
-    <div className="dashboard">
-      <div className="dashboard-header">
-        <div className="stat-card">
-          <div className="stat-top">
-            <span className="label">Капитал</span>
-            <span className="stat-icon">💰</span>
-          </div>
-          <div className="value gradient-text-green">{formatMoney(nw)}</div>
+    <div className="dash">
+      <div className="dash-header">
+        <div>
+          <h1 className="dash-title">Обзор капитала</h1>
+          <p className="dash-subtitle">Симуляция финансовой империи начата. Удачи.</p>
         </div>
-        <div className="stat-card">
-          <div className="stat-top">
-            <span className="label">Наличные</span>
-            <span className="stat-icon">💵</span>
-          </div>
-          <div className="value" style={{ color: 'var(--text-primary)' }}>{formatMoney(state.cash)}</div>
-          <div className="sub">+ {formatMoney(state.checking)} на счету</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-top">
-            <span className="label">Всего активов</span>
-            <span className="stat-icon">📦</span>
-          </div>
-          <div className="value text-blue">{formatMoney(totalAssets)}</div>
-          <div className="sub">+ {formatMoney(state.savings)} в копилке</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-top">
-            <span className="label">Всего долгов</span>
-            <span className="stat-icon">📉</span>
-          </div>
-          <div className="value text-red">{formatMoney(totalDebt)}</div>
-          <div className="sub">Кредитный рейтинг: {state.creditScore}</div>
+        <div className="dash-header-actions">
+          <button className="dash-header-btn" onClick={() => {}}>📊 Отчёт</button>
         </div>
       </div>
 
-      <div className="day-controls">
-        <div className="day-info">
-          📅 День <strong>{state.day}</strong>
-          {state.job && <span>• <span style={{ color: 'var(--accent-green)' }}>{state.job}</span></span>}
+      <div className="dash-metrics">
+        <div className="dash-metric dash-metric-primary">
+          <div className="dash-metric-blur" />
+          <div className="dash-metric-label">Общий Капитал</div>
+          <div className="dash-metric-value">{formatMoney(nw)}</div>
+          <div className="dash-metric-change">
+            <span className="dash-change-badge">
+              <svg className="dash-change-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+              {nwChange >= 0 ? '+' : ''}{nwChange.toFixed(1)}%
+            </span>
+            <span className="dash-change-label">со старта</span>
+          </div>
         </div>
-        <div className="day-info" style={{ fontSize: 13 }}>
-          ⚡ <strong style={{ color: state.actionPoints > 3 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{state.actionPoints}</strong>/{MAX_ACTIONS} действий
+
+        <div className="dash-metric">
+          <div className="dash-metric-label">Наличные</div>
+          <div className="dash-metric-value">{formatMoney(state.cash)}</div>
+          <div className="dash-metric-sub">+ {formatMoney(state.checking)} на счету в банке</div>
         </div>
-        <button className="day-btn" onClick={onAdvanceDay}>
-          ▶ Следующий день
-        </button>
+
+        <div className="dash-metric">
+          <div className="dash-metric-label">Всего активов</div>
+          <div className="dash-metric-value">{formatMoney(totalAssets)}</div>
+          <div className="dash-metric-sub">+ {formatMoney(state.savings)} в копилке</div>
+        </div>
+
+        <div className="dash-metric dash-metric-danger">
+          <div className="dash-metric-label">Всего долгов</div>
+          <div className="dash-metric-value dash-value-red">{formatMoney(totalDebt)}</div>
+          <div className="dash-metric-sub">Кредитный рейтинг: <span className="dash-text-white">{state.creditScore}</span></div>
+        </div>
       </div>
 
-      <div className="dashboard-grid">
-        <div className="card dashboard-section">
-          <span className="section-title">История капитала</span>
-          <div className="chart-wrapper">
+      <div className="dash-middle">
+        <div className="dash-chart-panel">
+          <div className="dash-panel-header">
+            <h3 className="dash-panel-title">Динамика роста</h3>
+            <div className="dash-panel-toggle">
+              <button className="dash-toggle-btn active">Всё время</button>
+              <button className="dash-toggle-btn">Месяц</button>
+            </div>
+          </div>
+          <div className="dash-chart-area">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <defs>
-                  <linearGradient id="nwGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.2} />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  <linearGradient id="chartGradLine" x1="0" y1="0" x2="100%" y2="0">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#10b981" />
+                  </linearGradient>
+                  <linearGradient id="chartGradArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(51,65,85,0.3)" />
-                <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatMoney(v)} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
+                <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#52525b' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#52525b' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatMoney(v)} />
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(12,18,32,0.95)',
-                    border: '1px solid rgba(51,65,85,0.6)',
+                    background: 'rgba(17,17,22,0.95)',
+                    border: '1px solid rgba(255,255,255,0.08)',
                     borderRadius: 8,
                     backdropFilter: 'blur(10px)',
                     boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
                   }}
-                  labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                  labelStyle={{ color: '#e4e4e7', fontWeight: 600 }}
                   formatter={(value: any) => [formatMoney(Number(value)), 'Капитал']}
                 />
-                <Area type="monotone" dataKey="netWorth" stroke="#10b981" strokeWidth={2} fill="url(#nwGradient)" dot={false} />
+                <Area type="monotone" dataKey="netWorth" stroke="url(#chartGradLine)" strokeWidth={2.5} fill="url(#chartGradArea)" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
+            <div className="dash-chart-labels">
+              <span className="dash-chart-label">День 0</span>
+              <span className="dash-chart-label">День {state.day}</span>
+            </div>
           </div>
         </div>
 
-        <div className="card dashboard-section">
-          <span className="section-title">Состав портфеля</span>
-          <div className="holdings-list">
-            <div className="h-item">
-              <span className="h-name">💵 Наличные и банк</span>
-              <span className="h-value">{formatMoney(state.cash + state.checking + state.savings)}</span>
+        <div className="dash-portfolio-panel">
+          <h3 className="dash-panel-title" style={{ marginBottom: 20 }}>Структура активов</h3>
+          <div className="dash-portfolio-items">
+            <div className="dash-portfolio-item">
+              <div className="dash-portfolio-head">
+                <div className="dash-portfolio-name">
+                  <span className="dash-portfolio-dot dash-dot-green" />
+                  Наличные
+                </div>
+                <span className="dash-portfolio-amount">{formatMoney(cashAndBank)}</span>
+              </div>
+              <div className="dash-portfolio-bar">
+                <div className="dash-portfolio-fill dash-fill-green" style={{ width: `${(cashAndBank / maxAsset) * 100}%` }} />
+              </div>
             </div>
-            <div className="h-item">
-              <span className="h-name">📈 Акции</span>
-              <span className="h-value" style={{ color: 'var(--accent-cyan)' }}>{formatMoney(state.stockPortfolio.reduce((a, sp) => {
-                const st = state.stocks.find(s => s.symbol === sp.symbol);
-                return a + (st ? st.price * sp.shares : 0);
-              }, 0))}</span>
-            </div>
-            <div className="h-item">
-              <span className="h-name">🏠 Недвижимость</span>
-              <span className="h-value" style={{ color: 'var(--accent-blue)' }}>{formatMoney(state.properties.reduce((a, p) => a + p.currentValue, 0))}</span>
-            </div>
-            <div className="h-item">
-              <span className="h-name">🚗 Авто</span>
-              <span className="h-value" style={{ color: 'var(--accent-amber)' }}>{formatMoney(state.vehicles.reduce((a, v) => a + v.currentValue, 0))}</span>
-            </div>
-            <div className="h-item">
-              <span className="h-name">🏪 Бизнес</span>
-              <span className="h-value" style={{ color: 'var(--accent-purple)' }}>{formatMoney(state.businesses.reduce((a, b) => a + b.value, 0))}</span>
-            </div>
-            <div className="h-item h-total">
-              <span className="h-name" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Всего активов</span>
-              <span className="h-value text-blue">{formatMoney(totalAssets)}</span>
-            </div>
-            <div className="h-item">
-              <span className="h-name">Долги</span>
-              <span className="h-value text-red">−{formatMoney(totalDebt)}</span>
-            </div>
-          </div>
 
-          <div style={{ marginTop: 16, height: 60, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ flex: 1, height: 8, background: 'rgba(51,65,85,0.3)', borderRadius: 4, display: 'flex', overflow: 'hidden' }}>
-              {totalAssets > 0 && (
-                <>
-                  <div style={{ flex: state.cash + state.checking + state.savings, background: 'var(--text-muted)', minWidth: 2 }} />
-                  <div style={{ flex: state.stockPortfolio.reduce((a, sp) => { const st = state.stocks.find(s => s.symbol === sp.symbol); return a + (st ? st.price * sp.shares : 0); }, 0), background: 'var(--accent-cyan)', minWidth: 2 }} />
-                  <div style={{ flex: state.properties.reduce((a, p) => a + p.currentValue, 0), background: 'var(--accent-blue)', minWidth: 2 }} />
-                  <div style={{ flex: state.vehicles.reduce((a, v) => a + v.currentValue, 0), background: 'var(--accent-amber)', minWidth: 2 }} />
-                  <div style={{ flex: state.businesses.reduce((a, b) => a + b.value, 0), background: 'var(--accent-purple)', minWidth: 2 }} />
-                </>
-              )}
+            <div className="dash-portfolio-item">
+              <div className="dash-portfolio-head">
+                <div className="dash-portfolio-name">
+                  <span className="dash-portfolio-dot dash-dot-blue" />
+                  Акции
+                </div>
+                <span className="dash-portfolio-amount">{formatMoney(stocksValue)}</span>
+              </div>
+              <div className="dash-portfolio-bar">
+                <div className="dash-portfolio-fill dash-fill-blue" style={{ width: `${(stocksValue / maxAsset) * 100}%` }} />
+              </div>
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--text-muted)' }}>
-            <span>● Наличные</span>
-            <span>● Акции</span>
-            <span>● Недвиж.</span>
-            <span>● Авто</span>
-            <span>● Бизнес</span>
+
+            <div className="dash-portfolio-item">
+              <div className="dash-portfolio-head">
+                <div className="dash-portfolio-name">
+                  <span className="dash-portfolio-dot dash-dot-purple" />
+                  Недвижимость
+                </div>
+                <span className="dash-portfolio-amount">{formatMoney(propertyValue)}</span>
+              </div>
+              <div className="dash-portfolio-bar">
+                <div className="dash-portfolio-fill dash-fill-purple" style={{ width: `${(propertyValue / maxAsset) * 100}%` }} />
+              </div>
+            </div>
+
+            <div className="dash-portfolio-item">
+              <div className="dash-portfolio-head">
+                <div className="dash-portfolio-name">
+                  <span className="dash-portfolio-dot dash-dot-cyan" />
+                  Крипта
+                </div>
+                <span className="dash-portfolio-amount">{formatMoney(cryptoValue)}</span>
+              </div>
+              <div className="dash-portfolio-bar">
+                <div className="dash-portfolio-fill dash-fill-cyan" style={{ width: `${(cryptoValue / maxAsset) * 100}%` }} />
+              </div>
+            </div>
+
+            <div className="dash-portfolio-item">
+              <div className="dash-portfolio-head">
+                <div className="dash-portfolio-name">
+                  <span className="dash-portfolio-dot dash-dot-amber" />
+                  Бизнес
+                </div>
+                <span className="dash-portfolio-amount">{formatMoney(businessValue)}</span>
+              </div>
+              <div className="dash-portfolio-bar">
+                <div className="dash-portfolio-fill dash-fill-amber" style={{ width: `${(businessValue / maxAsset) * 100}%` }} />
+              </div>
+            </div>
           </div>
 
           {state.achievements.length > 0 && (
-            <>
-              <span className="section-title" style={{ marginTop: 20 }}>Достижения</span>
-              <div className="achievement-list">
+            <div style={{ marginTop: 20 }}>
+              <div className="dash-achievements-label">Достижения</div>
+              <div className="dash-achievements">
                 {state.achievements.map(a => (
-                  <span key={a} className="achievement-badge">
+                  <span key={a} className="dash-achievement-badge">
                     {getAchievementName(a).split('—')[0].trim()}
                   </span>
                 ))}
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
 
-      <div className="card">
-          <span className="section-title">Лог событий</span>
-        <div className="event-log">
-          {state.eventLog.slice(-30).reverse().map((entry, i) => (
-            <div key={i} className="log-entry">
-              {entry}
-            </div>
-          ))}
+      <div className="dash-log-panel">
+        <div className="dash-panel-header">
+          <h3 className="dash-panel-title">Журнал событий</h3>
+          <span className="dash-log-fade">Только важные</span>
+        </div>
+        <div className="dash-log-list">
+          {state.eventLog.slice(-20).reverse().map((entry, i) => {
+            const isGood = entry.includes('🎉') || entry.includes('✅') || entry.includes('🏆') || entry.includes('💰');
+            const isBad = entry.includes('⚠️') || entry.includes('❌') || entry.includes('🚔') || entry.includes('🔻');
+            const isPrison = entry.includes('⛓️') || entry.includes('🕊️');
+            return (
+              <div key={i} className={`dash-log-entry ${isGood ? 'good' : isBad ? 'bad' : isPrison ? 'prison' : ''}`}>
+                <span className="dash-log-time">{eventTime(state.day - Math.floor(i / 2))}</span>
+                <div className="dash-log-body">
+                  <p className={`dash-log-msg ${isGood ? 'text-green' : isBad ? 'text-red' : ''}`}>{entry}</p>
+                </div>
+              </div>
+            );
+          })}
+          {state.eventLog.length === 0 && (
+            <div className="dash-log-empty">История пуста</div>
+          )}
         </div>
       </div>
     </div>
