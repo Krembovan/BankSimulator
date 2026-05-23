@@ -151,6 +151,51 @@
   font-weight: 700;
 }
 
+.sb-report-btn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: background 0.2s;
+  margin-left: auto;
+}
+
+.sb-report-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.sb-report-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(10, 17, 33, 0.5);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  animation: fadeIn 0.2s ease;
+}
+
+.sb-report-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.sb-report-input:focus {
+  border-color: var(--accent-blue);
+}
+
 .nw-preview {
   background: linear-gradient(135deg, var(--bg-glass) 0%, rgba(16, 185, 129, 0.05) 100%);
   border: 1px solid rgba(16, 185, 129, 0.15);

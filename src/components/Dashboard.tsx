@@ -1,9 +1,7 @@
-import { useState } from 'react';
 import './Dashboard.css';
 import { getNetWorth, getAchievementName } from '../game/events';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
 import type { GameState } from '../types';
-import { openReportIssue } from '../game/report';
 
 interface DashboardProps {
   state: GameState;
@@ -19,8 +17,6 @@ function formatMoney(n: number) {
 }
 
 export default function Dashboard({ state, onAdvanceDay, onToggleAuto, autoMode }: DashboardProps) {
-  const [showReport, setShowReport] = useState(false);
-  const [reportText, setReportText] = useState('');
   const nw = getNetWorth(state);
   const totalAssets = state.cash + state.checking + state.savings +
     state.cds.reduce((a, c) => a + c.amount, 0) +
@@ -86,31 +82,7 @@ export default function Dashboard({ state, onAdvanceDay, onToggleAuto, autoMode 
           📅 День <strong>{state.day}</strong>
           {state.job && <span>• <span style={{ color: 'var(--accent-green)' }}>{state.job}</span></span>}
         </div>
-        <button className="report-btn" onClick={() => setShowReport(!showReport)} title="Сообщить о баге">
-          🐛
-        </button>
       </div>
-      {showReport && (
-        <div className="report-inline">
-          <textarea
-            className="report-inline-input"
-            placeholder="Опишите баг..."
-            rows={2}
-            value={reportText}
-            onChange={e => setReportText(e.target.value)}
-          />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              className="btn-primary btn-sm"
-              onClick={() => { openReportIssue(reportText); setReportText(''); setShowReport(false); }}
-              disabled={!reportText.trim()}
-            >
-              Отправить
-            </button>
-            <button className="btn-ghost btn-sm" onClick={() => setShowReport(false)}>Отмена</button>
-          </div>
-        </div>
-      )}
 
       <div className="dashboard-grid">
         <div className="card dashboard-section">

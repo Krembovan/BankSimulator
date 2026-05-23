@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import './Sidebar.css';
 import { getNetWorth } from '../game/events';
 import type { GameState } from '../types';
+import { openReportIssue } from '../game/report';
 
 interface SidebarProps {
   state: GameState;
@@ -21,6 +23,8 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar({ state, activeTab, onTabChange }: SidebarProps) {
+  const [showReport, setShowReport] = useState(false);
+  const [reportText, setReportText] = useState('');
   const nw = getNetWorth(state);
   const pctToGoal = Math.min(100, (nw / 10000000) * 100);
   const formatMoney = (n: number) => '$' + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -49,7 +53,23 @@ export default function Sidebar({ state, activeTab, onTabChange }: SidebarProps)
       <div className="sidebar-footer">
         <div className="day-display">
           📅 День <span className="day-num">{state.day}</span>
+          <button className="sb-report-btn" onClick={() => setShowReport(!showReport)} title="Сообщить о баге">🐛</button>
         </div>
+        {showReport && (
+          <div className="sb-report-inline">
+            <textarea
+              className="sb-report-input"
+              placeholder="Опишите баг..."
+              rows={2}
+              value={reportText}
+              onChange={e => setReportText(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="btn-primary btn-sm" onClick={() => { openReportIssue(reportText); setReportText(''); setShowReport(false); }} disabled={!reportText.trim()}>Отправить</button>
+              <button className="btn-ghost btn-sm" onClick={() => setShowReport(false)}>Отмена</button>
+            </div>
+          </div>
+        )}
         <div className="nw-preview">
           <div className="label">Капитал</div>
           <div className="value">{formatMoney(nw)}</div>
