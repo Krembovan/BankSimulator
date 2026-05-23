@@ -1,6 +1,6 @@
 import './Vehicles.css';
 import type { GameState } from '../types';
-import { buyVehicle, sellVehicle } from '../game/engine';
+import { buyVehicle, sellVehicle, upgradeVehicle } from '../game/engine';
 import { VEHICLES_LIST } from '../types';
 
 interface VehiclesProps {
@@ -45,7 +45,8 @@ export default function Vehicles({ state, setState }: VehiclesProps) {
                     <div className={`v-owned-change ${change >= 0 ? 'text-green' : 'text-red'}`}>
                       {change >= 0 ? '+' : ''}{change.toFixed(1)}%
                     </div>
-                    <button className="btn-danger btn-sm" onClick={() => setState(sellVehicle(state, v.id))}>Продать</button>
+                    <button className="btn-primary btn-sm" onClick={() => setState(upgradeVehicle(state, v.id))} disabled={state.cash < Math.round(v.currentValue * 0.15) || state.actionPoints < 1} title={`Улучшить: $${Math.round(v.currentValue * 0.15)}`}>🔧</button>
+                    <button className="btn-danger btn-sm" onClick={() => setState(sellVehicle(state, v.id))} disabled={state.actionPoints < 1}>Продать</button>
                   </div>
                 </div>
               );
@@ -73,7 +74,7 @@ export default function Vehicles({ state, setState }: VehiclesProps) {
               <button
                 className="btn-primary"
                 onClick={() => setState(buyVehicle(state, idx))}
-                disabled={state.cash + state.checking < v.price}
+                disabled={state.cash + state.checking < v.price || state.actionPoints < 1}
                 style={{ opacity: state.cash + state.checking < v.price ? 0.5 : 1 }}
               >
                 {state.cash + state.checking >= v.price ? 'Купить' : 'Не хватает денег'}

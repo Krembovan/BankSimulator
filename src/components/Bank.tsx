@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import './Bank.css';
 import type { GameState } from '../types';
-import { getLoan, payLoan } from '../game/engine';
+import { LOAN_PURPOSE_NAMES, getLoanLimit, getLoanRate } from '../types';
+import { getLoan, payLoan, payTaxes } from '../game/engine';
 
 interface BankProps {
   state: GameState;
@@ -14,6 +15,11 @@ function formatMoney(n: number) {
   return '$' + n.toLocaleString();
 }
 
+function calcMonthlyPayment(amount: number, annualRate: number, months: number): number {
+  const mr = annualRate / 12;
+  return Math.round(amount * mr * Math.pow(1 + mr, months) / (Math.pow(1 + mr, months) - 1));
+}
+
 export default function Bank({ state, setState }: BankProps) {
   const [depositAmt, setDepositAmt] = useState('');
   const [withdrawAmt, setWithdrawAmt] = useState('');
@@ -21,8 +27,11 @@ export default function Bank({ state, setState }: BankProps) {
   const [savingsWithdraw, setSavingsWithdraw] = useState('');
   const [cdAmount, setCdAmount] = useState('');
   const [cdTerm, setCdTerm] = useState<'6m' | '1y' | '3y'>('1y');
-  const [loanAmount, setLoanAmount] = useState('');
-  const [loanType, setLoanType] = useState<'personal' | 'business'>('personal');
+  const [showContract, setShowContract] = useState(false);
+  const [contractName, setContractName] = useState('');
+  const [contractPurpose, setContractPurpose] = useState('other');
+  const [contractTerm, setContractTerm] = useState('12');
+  const [contractAmount, setContractAmount] = useState('');
 
   const deposit = () => {
     const amt = parseInt(depositAmt);
@@ -67,12 +76,32 @@ export default function Bank({ state, setState }: BankProps) {
     setCdAmount('');
   };
 
-  const takeLoan = () => {
-    const amt = parseInt(loanAmount);
+  const openContract = () => {
+    const amt = parseInt(contractAmount);
     if (isNaN(amt) || amt <= 0) return;
-    const s = getLoan(state, loanType, amt);
+    const limit = getLoanLimit(contractPurpose);
+    if (amt > limit) return;
+    if (!contractName.trim()) return;
+    setShowContract(true);
+  };
+
+  const confirmLoan = () => {
+    const amt = parseInt(contractAmount);
+    if (isNaN(amt) || amt <= 0) return;
+    const term = parseInt(contractTerm);
+    if (isNaN(term) || term < 1 || term > 36) return;
+    const s = getLoan(state, {
+      purpose: contractPurpose,
+      borrowerName: contractName.trim(),
+      termMonths: term,
+      amount: amt,
+    });
     setState(s);
-    setLoanAmount('');
+    setShowContract(false);
+    setContractName('');
+    setContractPurpose('other');
+    setContractTerm('12');
+    setContractAmount('');
   };
 
   const repayLoan = (loanId: number) => {
@@ -81,6 +110,19 @@ export default function Bank({ state, setState }: BankProps) {
   };
 
   const cdRates: Record<string, number> = { '6m': 4.0, '1y': 5.0, '3y': 6.5 };
+
+  const termMonths = parseInt(contractTerm) || 12;
+  const previewAmount = parseInt(contractAmount) || 0;
+  const previewRate = getLoanRate(contractPurpose);
+  const adjRate = previewRate + (0.05 * (650 - state.creditScore) / 350);
+  const previewPayment = calcMonthlyPayment(previewAmount, adjRate, termMonths);
+
+  const taxable = state.taxableIncome || 0;
+  let taxRate = 0.1;
+  if (taxable > 10000) taxRate = 0.15;
+  if (taxable > 50000) taxRate = 0.2;
+  if (taxable > 200000) taxRate = 0.25;
+  const taxEstimate = Math.round(taxable * taxRate);
 
   return (
     <div className="bank-view">
@@ -151,7 +193,7 @@ export default function Bank({ state, setState }: BankProps) {
           </div>
           <div className="bank-actions" style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
             <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 500 }}>Сумма инвестиции</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 500 }}>Сумма инвестиции</div>
               <input type="number" placeholder="Сколько вложить?" value={cdAmount} onChange={e => setCdAmount(e.target.value)} style={{ width: '100%' }} />
             </div>
             <button className="btn-success" onClick={openCD}>Открыть депозит</button>
@@ -167,7 +209,7 @@ export default function Bank({ state, setState }: BankProps) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-amber)' }}>{cd.daysLeft}d</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{Math.round(cd.amount * cd.rate * (cd.termDays / 365) * 100) / 100} процентов</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{Math.round(cd.amount * cd.rate * (cd.termDays / 365) * 100) / 100} проценты</div>
                   </div>
                 </div>
               ))}
@@ -181,24 +223,49 @@ export default function Bank({ state, setState }: BankProps) {
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Кредитный рейтинг:</span>
             <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent-blue)' }}>{state.creditScore}</span>
           </div>
-          <div className="bank-actions" style={{ gap: 8 }}>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button className={`btn-sm ${loanType === 'personal' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setLoanType('personal')}>Личный</button>
-              <button className={`btn-sm ${loanType === 'business' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setLoanType('business')}>Бизнес</button>
+
+          <div className="bank-actions" style={{ gap: 8, flexDirection: 'column' }}>
+            <div className="input-row">
+              <input type="text" placeholder="ФИО заёмщика" value={contractName} onChange={e => setContractName(e.target.value)} />
             </div>
             <div className="input-row">
-              <input type="number" placeholder="Сумма кредита" value={loanAmount} onChange={e => setLoanAmount(e.target.value)} />
-              <button className="btn-warning btn-sm" onClick={takeLoan}>Взять кредит</button>
+              <select value={contractPurpose} onChange={e => setContractPurpose(e.target.value)} style={{ flex: 1 }}>
+                {Object.entries(LOAN_PURPOSE_NAMES).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
             </div>
+            <div className="input-row">
+              <select value={contractTerm} onChange={e => setContractTerm(e.target.value)} style={{ flex: 1 }}>
+                {Array.from({ length: 36 }, (_, i) => i + 1).map(m => (
+                  <option key={m} value={m}>{m} мес.</option>
+                ))}
+              </select>
+            </div>
+            <div className="input-row">
+              <input type="number" placeholder="Сумма кредита" value={contractAmount} onChange={e => setContractAmount(e.target.value)} />
+              <button className="btn-warning btn-sm" onClick={openContract} disabled={!contractName.trim() || parseInt(contractAmount) <= 0 || parseInt(contractAmount) > getLoanLimit(contractPurpose) || state.actionPoints < 2}>
+                Оформить
+              </button>
+            </div>
+            {previewAmount > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '4px 0', lineHeight: 1.6 }}>
+                Лимит: {formatMoney(getLoanLimit(contractPurpose))} · Ставка: {(adjRate * 100).toFixed(1)}% · Платеж: {formatMoney(previewPayment)}/мес · Всего: {formatMoney(previewPayment * termMonths)}
+              </div>
+            )}
           </div>
+
           {state.loans.length > 0 && (
             <div className="loan-list" style={{ marginTop: 8 }}>
               {state.loans.map(loan => (
                 <div key={loan.id} className="loan-item">
                   <div className="loan-info">
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{loan.type === 'mortgage' ? '🏠' : loan.type === 'business' ? '🏪' : '💳'} {loan.type} loan</div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{LOAN_PURPOSE_NAMES[loan.purpose] || loan.purpose}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      {(loan.rate * 100).toFixed(1)}% &middot; {formatMoney(loan.remaining)} осталось &middot; {formatMoney(loan.monthlyPayment)}/мес
+                      {(loan.rate * 100).toFixed(1)}% · {formatMoney(loan.remaining)} осталось · {formatMoney(loan.monthlyPayment)}/мес
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                      {loan.borrowerName} · {loan.termMonths} мес. · {loan.missedPayments > 0 ? <span style={{ color: 'var(--accent-red)' }}>просрочка {loan.missedPayments} мес.</span> : 'без просрочек'}
                     </div>
                   </div>
                   <button className="btn-danger btn-sm" onClick={() => repayLoan(loan.id)}>Оплатить</button>
@@ -208,6 +275,68 @@ export default function Bank({ state, setState }: BankProps) {
           )}
         </div>
       </div>
+
+      <div className="tax-bar">
+        <div className="tax-info">
+          <span className="tax-label">🧾 Налоги</span>
+          <span className="tax-days">{state.day - state.lastTaxDay} дн. без оплаты</span>
+        </div>
+        <div className="tax-center-info">
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            Облагаемый доход: {formatMoney(taxable)}
+            {state.day - state.lastTaxDay > 30 && taxable > 0 && (
+              <span style={{ color: 'var(--accent-red)', marginLeft: 8 }}>⚠️ Просрочка!</span>
+            )}
+          </span>
+        </div>
+        <div className="tax-action">
+          <span className="tax-amount" style={{ color: state.day - state.lastTaxDay > 30 && taxable > 0 ? 'var(--accent-red)' : 'var(--text-muted)' }}>
+            ~{formatMoney(taxEstimate)}
+          </span>
+          <button
+            className="btn-warning btn-sm"
+            onClick={() => setState(payTaxes(state))}
+            disabled={taxable <= 0 || state.cash + state.checking < taxEstimate}
+          >
+            Оплатить
+          </button>
+        </div>
+      </div>
+
+      {showContract && (
+        <div className="modal-overlay" onClick={() => setShowContract(false)}>
+          <div className="contract-modal" onClick={e => e.stopPropagation()}>
+            <div className="contract-header">📝 Кредитный договор</div>
+            <div className="contract-body">
+              <div className="contract-field">
+                <label>ФИО заёмщика</label>
+                <div className="contract-value">{contractName}</div>
+              </div>
+              <div className="contract-field">
+                <label>Цель кредита</label>
+                <div className="contract-value">{LOAN_PURPOSE_NAMES[contractPurpose]}</div>
+              </div>
+              <div className="contract-field">
+                <label>Срок</label>
+                <div className="contract-value">{contractTerm} мес.</div>
+              </div>
+              <div className="contract-field">
+                <label>Сумма</label>
+                <div className="contract-value">{formatMoney(previewAmount)}</div>
+              </div>
+              <div className="contract-terms">
+                <div>Ставка: {(adjRate * 100).toFixed(1)}%</div>
+                <div>Платеж: {formatMoney(previewPayment)}/мес</div>
+                <div>Всего к выплате: {formatMoney(previewPayment * termMonths)}</div>
+              </div>
+            </div>
+            <div className="contract-actions">
+              <button className="btn-primary" onClick={confirmLoan}>Подписать договор</button>
+              <button className="btn-ghost" onClick={() => setShowContract(false)}>Отказаться</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="liquid-assets-card">
         <span className="la-label">Всего ликвидных средств</span>

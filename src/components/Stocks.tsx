@@ -95,7 +95,7 @@ export default function Stocks({ state, setState }: StocksProps) {
                             value={buyAmounts[stock.symbol] || ''}
                             onChange={e => setBuyAmounts(prev => ({ ...prev, [stock.symbol]: e.target.value }))}
                           />
-                          <button className="btn-success btn-sm" onClick={() => handleBuy(stock.symbol)}>Купить</button>
+                          <button className="btn-success btn-sm" onClick={() => handleBuy(stock.symbol)} disabled={state.actionPoints < 1}>Купить</button>
                         </div>
                       </td>
                       <td>
@@ -107,7 +107,7 @@ export default function Stocks({ state, setState }: StocksProps) {
                               value={sellShares[stock.symbol] || ''}
                               onChange={e => setSellShares(prev => ({ ...prev, [stock.symbol]: e.target.value }))}
                             />
-                            <button className="btn-danger btn-sm" onClick={() => handleSell(stock.symbol)}>Продать</button>
+                            <button className="btn-danger btn-sm" onClick={() => handleSell(stock.symbol)} disabled={state.actionPoints < 1}>Продать</button>
                           </div>
                         ) : (
                           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>

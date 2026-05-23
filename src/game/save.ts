@@ -18,6 +18,25 @@ function migrateState(state: any): GameState {
     state.cryptos = CRYPTO_LIST.map(c => ({ ...c }));
   }
 
+  state.blackMarketInventory = state.blackMarketInventory ?? [];
+  state.lastTaxDay = state.lastTaxDay ?? 0;
+  state.taxableIncome = state.taxableIncome ?? 0;
+  state.actionPoints = state.actionPoints ?? 10;
+
+  if (state.loans) {
+    state.loans.forEach((loan: any) => {
+      loan.missedPayments = loan.missedPayments ?? 0;
+      if (loan.type) {
+        const typeMap: Record<string, string> = { personal: 'other', mortgage: 'property', business: 'business' };
+        loan.purpose = typeMap[loan.type] || 'other';
+      }
+      loan.purpose = loan.purpose ?? 'other';
+      loan.borrowerName = loan.borrowerName ?? 'Заёмщик';
+      loan.termMonths = loan.termMonths ?? 12;
+      loan.startDay = loan.startDay ?? 0;
+    });
+  }
+
   return state as GameState;
 }
 
@@ -48,12 +67,16 @@ export function createInitialState(): GameState {
     shadowJob: null,
     riskLevel: 0,
     dirtyCash: 0,
-    eventLog: ['Добро пожаловать в Bank Simulator! Ваш путь к $10M начинается сегодня.'],
+    eventLog: ['Добро пожаловать в Bank Simulator! Стройте свою империю.'],
     achievements: [],
     marketData: [{ day: 1, netWorth: 2000, cash: 2000 }],
     stocks: STOCK_LIST.map(s => ({ ...s })),
     cryptos: CRYPTO_LIST.map(c => ({ ...c })),
     propertiesMarket: PROPERTIES_MARKET.map(p => ({ ...p })),
+    blackMarketInventory: [],
+    lastTaxDay: 0,
+    taxableIncome: 0,
+    actionPoints: 10,
     showEvent: false,
     eventMessage: '',
     eventType: 'info',

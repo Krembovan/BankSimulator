@@ -16,6 +16,15 @@ const GOOD_EVENTS = [
   { msg: 'Выиграли в конкурсе: $600!', cash: 600 },
   { msg: 'Пришёл налоговый вычет: $1800!', cash: 1800 },
   { msg: 'Подруга вернула долг: $900!', cash: 900 },
+  { msg: 'Продали старый ноутбук: $650!', cash: 650 },
+  { msg: 'Выиграли в лотерейный билет: $2500!', cash: 2500 },
+  { msg: 'Работодатель подарил подарочную карту: $500!', cash: 500 },
+  { msg: 'Сосед заплатил за помощь с переездом: $450!', cash: 450 },
+  { msg: 'Получили дивиденды по старым акциям: $3200!', cash: 3200 },
+  { msg: 'Нашли монету 1910 года: $1500!', cash: 1500 },
+  { msg: 'Выиграли в телевикторине: $4000!', cash: 4000 },
+  { msg: 'Крипто-дропнули токены на $800!', cash: 800 },
+  { msg: 'Получили кешбэк 5% на все покупки: $600!', cash: 600 },
 ];
 
 const BAD_EVENTS = [
@@ -34,6 +43,15 @@ const BAD_EVENTS = [
   { msg: 'Сломался кондиционер: −$800', cash: -800 },
   { msg: 'Судебные издержки: −$1800', cash: -1800 },
   { msg: 'Угнали велосипед: −$700', cash: -700 },
+  { msg: 'Грабители взломали сейф: −$5000', cash: -5000 },
+  { msg: 'Пожар в гараже: −$4000', cash: -4000 },
+  { msg: 'Штраф за незаконную перепланировку: −$2500', cash: -2500 },
+  { msg: 'Попали на мошенников: −$3500', cash: -3500 },
+  { msg: 'Сгорел генератор: −$1800', cash: -1800 },
+  { msg: 'Прокололи шины — замена всех: −$600', cash: -600 },
+  { msg: 'Штраф за шум после 23:00: −$500', cash: -500 },
+  { msg: 'Залили соседей снизу: −$3000', cash: -3000 },
+  { msg: 'Украли аккумулятор из машины: −$400', cash: -400 },
 ];
 
 const MARKET_EVENTS = [
@@ -55,121 +73,297 @@ const MARKET_EVENTS = [
   { msg: '🚀 Крипто-бум! Все монеты растут!', type: 'good', mult: 1.15, isCrypto: true },
   { msg: '🔧 Промышленный подъём! Промышленность растёт!', type: 'good', mult: 1.1, sector: 'Промышленность' },
   { msg: '🎬 Блокбастер вышел! Развлечения растут!', type: 'good', mult: 1.12, sector: 'Развлечения' },
+  { msg: '🌾 Урожай рекордный! Сельское хозяйство взлетает!', type: 'good', mult: 1.1, sector: 'Потребление' },
+  { msg: '📉 Пузырь недвижимости лопнул! Акции строителей падают!', type: 'bad', mult: 0.85, sector: 'Промышленность' },
+  { msg: '🛡️ Кибератака на банки! Финансы падают!', type: 'bad', mult: 0.88, sector: 'Финансы' },
+  { msg: '🧬 Генная терапия одобрена! Медицина взлетает!', type: 'good', mult: 1.15, sector: 'Здравоохранение' },
+  { msg: '🚗 Электромобили бьют рекорды продаж! Промышленность растёт!', type: 'good', mult: 1.1, sector: 'Промышленность' },
+  { msg: '💳 Кризис потребкредитования! Потребление падает!', type: 'bad', mult: 0.88, sector: 'Потребление' },
 ];
 
 export function checkRandomEvent(state: GameState): GameState {
+  const s = structuredClone(state);
   const roll = Math.random();
-  if (roll < 0.08) {
+  if (roll < 0.04) {
     const event = GOOD_EVENTS[Math.floor(Math.random() * GOOD_EVENTS.length)];
-    state.cash += event.cash;
-    state.totalEarned += event.cash;
-    state.eventLog.push(`День ${state.day}: ${event.msg}`);
-    return { ...state, showEvent: true, eventMessage: event.msg, eventType: 'good' };
+    s.cash += event.cash;
+    s.totalEarned += event.cash;
+    s.eventLog.push(`День ${s.day}: ${event.msg}`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = event.msg;
+      s.eventType = 'good';
+    }
+    return s;
   }
-  if (roll < 0.16) {
+  if (roll < 0.08) {
     const event = BAD_EVENTS[Math.floor(Math.random() * BAD_EVENTS.length)];
-    state.cash = Math.max(0, state.cash + event.cash);
-    state.eventLog.push(`День ${state.day}: ${event.msg}`);
-    return { ...state, showEvent: true, eventMessage: event.msg, eventType: 'bad' };
+    s.cash = Math.max(0, s.cash + event.cash);
+    s.eventLog.push(`День ${s.day}: ${event.msg}`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = event.msg;
+      s.eventType = 'bad';
+    }
+    return s;
   }
-  if (roll < 0.22) {
+  if (roll < 0.12) {
     const event = MARKET_EVENTS[Math.floor(Math.random() * MARKET_EVENTS.length)];
 
     if (event.isCrypto) {
-      state.cryptos.forEach(c => {
+      s.cryptos.forEach(c => {
         c.price = Math.max(0.001, Math.round(c.price * event.mult * 100) / 100);
       });
     } else {
-      state.stocks.forEach(s => {
-        if (!event.sector || s.sector === event.sector) {
-          s.price = Math.round(s.price * event.mult * 100) / 100;
+      s.stocks.forEach(st => {
+        if (!event.sector || st.sector === event.sector) {
+          st.price = Math.round(st.price * event.mult * 100) / 100;
         }
       });
       if (event.type === 'good') {
-        state.propertiesMarket.forEach(p => { p.price = Math.round(p.price * 1.03); p.rent = Math.round(p.rent * 1.05); });
+        s.propertiesMarket.forEach(p => { p.price = Math.round(p.price * 1.03); p.rent = Math.round(p.rent * 1.05); });
       }
     }
 
-    state.eventLog.push(`День ${state.day}: ${event.msg}`);
-    return { ...state, showEvent: true, eventMessage: event.msg, eventType: event.type as 'good' | 'bad' };
+    s.eventLog.push(`День ${s.day}: ${event.msg}`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = event.msg;
+      s.eventType = event.type as 'good' | 'bad';
+    }
+    return s;
   }
-  return state;
+  return s;
 }
 
 export function applyMonthlyExpenses(state: GameState): GameState {
+  const s = structuredClone(state);
   const food = 100 + Math.floor(Math.random() * 200);
   const utilities = 80 + Math.floor(Math.random() * 150);
-  const transport = state.vehicles.length > 0 ? 50 + Math.floor(Math.random() * 100) : 30;
+  const transport = s.vehicles.length > 0 ? 50 + Math.floor(Math.random() * 100) : 30;
   const total = food + utilities + transport;
-  state.cash = Math.max(0, state.cash - total);
-  state.totalSpent += total;
-  state.eventLog.push(`День ${state.day}: Ежемесячные расходы: еда $${food}, ЖКХ $${utilities}, транспорт $${transport} = $${total}`);
-  state.lastExpenseDay = state.day;
-  return state;
+  s.cash = Math.max(0, s.cash - total);
+  s.totalSpent += total;
+  s.eventLog.push(`День ${s.day}: Ежемесячные расходы: еда $${food}, ЖКХ $${utilities}, транспорт $${transport} = $${total}`);
+  s.lastExpenseDay = s.day;
+  return s;
 }
 
 export function checkCareerEvent(state: GameState): GameState {
-  const roll = Math.random();
   if (state.job === null) return state;
+  const s = structuredClone(state);
+  const roll = Math.random();
 
-  if (roll < 0.03) {
-    const bonus = Math.round(JOB_LIST[state.jobIndex].salary * (1 + Math.random() * 3));
-    state.cash += bonus;
-    state.totalEarned += bonus;
-    state.performance = Math.min(100, state.performance + 5);
-    state.eventLog.push(`День ${state.day}: 🎉 Премия на работе: +$${bonus}!`);
-    return { ...state, showEvent: true, eventMessage: `Вам выписали премию $${bonus}!`, eventType: 'good' };
+  if (roll < 0.02) {
+    const bonus = Math.round(JOB_LIST[s.jobIndex].salary * (1 + Math.random() * 3));
+    s.cash += bonus;
+    s.totalEarned += bonus;
+    s.performance = Math.min(100, s.performance + 5);
+    s.eventLog.push(`День ${s.day}: 🎉 Премия на работе: +$${bonus}!`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = `Вам выписали премию $${bonus}!`;
+      s.eventType = 'good';
+    }
+    return s;
   }
-  if (roll < 0.05) {
-    const penalty = Math.round(JOB_LIST[state.jobIndex].salary * 0.5);
-    state.cash = Math.max(0, state.cash - penalty);
-    state.performance = Math.max(0, state.performance - 10);
-    state.eventLog.push(`День ${state.day}: ⚠️ Штраф на работе: −$${penalty}`);
-    return { ...state, showEvent: true, eventMessage: `Вы оштрафованы на работе на $${penalty}!`, eventType: 'bad' };
+  if (roll < 0.035) {
+    const penalty = Math.round(JOB_LIST[s.jobIndex].salary * 0.5);
+    s.cash = Math.max(0, s.cash - penalty);
+    s.performance = Math.max(0, s.performance - 10);
+    s.eventLog.push(`День ${s.day}: ⚠️ Штраф на работе: −$${penalty}`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = `Вы оштрафованы на работе на $${penalty}!`;
+      s.eventType = 'bad';
+    }
+    return s;
   }
-  if (roll < 0.055 && state.jobIndex > 0) {
-    state.cash = Math.max(0, state.cash - 0);
-    state.jobIndex -= 1;
-    state.job = JOB_LIST[state.jobIndex].name;
-    state.daysAtJob = 0;
-    state.performance = 30;
-    state.eventLog.push(`День ${state.day}: 🔻 Вас понизили до ${state.job}!`);
-    return { ...state, showEvent: true, eventMessage: `Вас понизили до ${state.job} из-за низкой производительности.`, eventType: 'bad' };
+  if (roll < 0.04 && s.jobIndex > 0) {
+    const demotionPenalty = Math.round(JOB_LIST[s.jobIndex].salary * 0.25);
+    s.cash = Math.max(0, s.cash - demotionPenalty);
+    s.jobIndex -= 1;
+    s.job = JOB_LIST[s.jobIndex].name;
+    s.daysAtJob = 0;
+    s.performance = 30;
+    s.eventLog.push(`День ${s.day}: 🔻 Вас понизили до ${s.job}! (штраф $${demotionPenalty})`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = `Вас понизили до ${s.job} и оштрафовали на $${demotionPenalty}.`;
+      s.eventType = 'bad';
+    }
+    return s;
   }
-  return state;
+  return s;
+}
+
+const COLLECTOR_EVENTS = [
+  { msg: '🚪 Коллекторы выбили дверь и забрали $%s наличных! Хорошо, что вы не пострадали...', cashPct: 0.3 },
+  { msg: '🔨 Коллекторы подождали у подъезда и "поговорили" с вами. −$%s и −15 кредитного рейтинга.', cashPct: 0.2 },
+  { msg: '💥 Бандиты перехватили вас у банкомата. Отдали $%s и теперь хромаете.', cashPct: 0.25 },
+  { msg: '🚗 Коллекторы "эвакуировали" ваш автомобиль. Выкупили за $%s. И зачем вы брали кредит?', cashPct: 0.15 },
+  { msg: '🏠 К вам пришли "гости". Забрали техники на $%s и велели поторопиться с выплатами.', cashPct: 0.35 },
+  { msg: '😱 Ночной визит! Разбили окно, забрали $%s. Соседи вызвали полицию, но те ушли.', cashPct: 0.2 },
+  { msg: '📱 Пришло СМС: "Ты думал мы шутим? Завтра будет вдвое больнее." Сняли $%s с карты.', cashPct: 0.1 },
+];
+
+export function checkCollectors(state: GameState): GameState {
+  const delinquentLoan = state.loans.find(l => (l.missedPayments || 0) >= 2);
+  if (!delinquentLoan) return state;
+  const s = structuredClone(state);
+
+  if (Math.random() < 0.3) {
+    const ev = COLLECTOR_EVENTS[Math.floor(Math.random() * COLLECTOR_EVENTS.length)];
+    const totalLiquid = s.cash + s.checking;
+    if (totalLiquid <= 0) return s;
+    const take = Math.max(1, Math.round(totalLiquid * ev.cashPct));
+    if (s.cash >= take) {
+      s.cash -= take;
+    } else {
+      s.cash = 0;
+      s.checking = Math.max(0, s.checking - (take - s.cash));
+    }
+    s.creditScore = Math.max(300, s.creditScore - 20);
+    s.totalSpent += take;
+
+    if (s.vehicles.length > 0 && Math.random() < 0.4) {
+      const vIdx = Math.floor(Math.random() * s.vehicles.length);
+      const damage = Math.round(s.vehicles[vIdx].currentValue * 0.2);
+      s.vehicles[vIdx].currentValue = Math.max(1, s.vehicles[vIdx].currentValue - damage);
+      s.eventLog.push(`День ${s.day}: 🔨 Коллекторы разбили ${s.vehicles[vIdx].name} (ущерб $${damage})`);
+    }
+
+    const msg = ev.msg.replace('%s', take.toLocaleString());
+    s.eventLog.push(`День ${s.day}: ${msg}`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = msg;
+      s.eventType = 'bad';
+    }
+    return s;
+  }
+  return s;
 }
 
 export function checkPoliceRaid(state: GameState): GameState {
   if (state.riskLevel <= 0) return state;
-  const raidChance = state.riskLevel / 500;
+  const s = structuredClone(state);
+  const raidChance = s.riskLevel / 500;
   if (Math.random() < raidChance) {
-    const fine = Math.round(state.dirtyCash * (0.3 + Math.random() * 0.4));
-    const confiscated = Math.round(state.dirtyCash * (0.1 + Math.random() * 0.3));
-    state.dirtyCash = Math.max(0, state.dirtyCash - confiscated);
-    state.cash = Math.max(0, state.cash - fine);
-    state.riskLevel = Math.max(0, state.riskLevel - 30);
-    state.eventLog.push(`День ${state.day}: 🚔 Полицейский рейд! Штраф $${fine}, конфисковано $${confiscated}`);
-    return { ...state, showEvent: true, eventMessage: `🚔 Полицейский рейд! Штраф $${fine}, конфисковано $${confiscated} грязных денег.`, eventType: 'bad' };
+    const fine = Math.round(s.dirtyCash * (0.3 + Math.random() * 0.4));
+    const confiscated = Math.round(s.dirtyCash * (0.1 + Math.random() * 0.3));
+    s.dirtyCash = Math.max(0, s.dirtyCash - confiscated);
+    s.cash = Math.max(0, s.cash - fine);
+    s.riskLevel = Math.max(0, s.riskLevel - 30);
+    s.eventLog.push(`День ${s.day}: 🚔 Полицейский рейд! Штраф $${fine}, конфисковано $${confiscated}`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = `🚔 Полицейский рейд! Штраф $${fine}, конфисковано $${confiscated} грязных денег.`;
+      s.eventType = 'bad';
+    }
+    return s;
   }
-  return state;
+  return s;
 }
 
 export function checkShadowOpportunity(state: GameState): GameState {
-  if (Math.random() < 0.03 && state.cash > 0) {
-    const item = SHADOW_OPPORTUNITIES[Math.floor(Math.random() * SHADOW_OPPORTUNITIES.length)];
-    state.eventLog.push(`День ${state.day}: ${item.msg}`);
-    return { ...state, showEvent: true, eventMessage: item.msg, eventType: 'info' };
+  if (state.shadowJob === null || Math.random() >= 0.02) return state;
+  const s = structuredClone(state);
+  const item = SHADOW_OPPORTUNITIES[Math.floor(Math.random() * SHADOW_OPPORTUNITIES.length)];
+
+  const successChance = item.risk === 'low' ? 0.8 : item.risk === 'medium' ? 0.5 : 0.25;
+  const success = Math.random() < successChance;
+
+  if (success) {
+    const reward = item.rewardMin + Math.floor(Math.random() * (item.rewardMax - item.rewardMin));
+    s.cash += reward;
+    s.dirtyCash += reward;
+    s.totalEarned += reward;
+    s.riskLevel = Math.min(100, s.riskLevel + Math.floor(reward / 1000));
+    const msg = `✅ ${item.msg} Удалось! +$${reward}`;
+    s.eventLog.push(`День ${s.day}: ${msg}`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = msg;
+      s.eventType = 'good';
+    }
+  } else {
+    const penalty = item.penalty;
+    s.dirtyCash += penalty;
+    s.cash = Math.max(0, s.cash - penalty);
+    s.riskLevel = Math.min(100, s.riskLevel + Math.floor(penalty / 500));
+    const msg = `❌ ${item.msg} Провал! −$${penalty}`;
+    s.eventLog.push(`День ${s.day}: ${msg}`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = msg;
+      s.eventType = 'bad';
+    }
   }
-  return state;
+  return s;
 }
 
 const SHADOW_OPPORTUNITIES = [
-  { msg: '💀 Нашёлся покупатель на краденый товар. Рискованно, но прибыльно.' },
-  { msg: '🕵️ Знакомый предлагает «лёгкие деньги». Риск — дело благородное.' },
-  { msg: '🌐 В даркнете новый заказ. Хороший заработок, но следы остаются.' },
-  { msg: '🎰 Подпольное казино ищет партнёра. Доля — 60% с риском 50/50.' },
-  { msg: '📦 Контрабанда на границе. Требуется курьер с холодной головой.' },
+  { msg: 'Нашёлся покупатель на краденый товар.', risk: 'low', rewardMin: 100, rewardMax: 500, penalty: 200 },
+  { msg: 'Знакомый предлагает «лёгкие деньги».', risk: 'medium', rewardMin: 500, rewardMax: 2000, penalty: 1000 },
+  { msg: 'В даркнете новый заказ.', risk: 'medium', rewardMin: 800, rewardMax: 3000, penalty: 1500 },
+  { msg: 'Подпольное казино ищет партнёра.', risk: 'high', rewardMin: 2000, rewardMax: 5000, penalty: 3000 },
+  { msg: 'Контрабанда на границе.', risk: 'high', rewardMin: 3000, rewardMax: 8000, penalty: 5000 },
 ];
+
+const TAX_EVENTS = [
+  '🚔 Налоговая нагрянула! Проверка документов, выемка средств! Конфисковано $%s. Добро пожаловать в тюрьму, товарищ бизнесмен.',
+  '👮‍♂️ ФНС заинтересовалась вашим состоянием. Арест счетов, изъято $%s. Срок — до 7 лет за неуплату налогов.',
+  '⚖️ Суд признал вас виновным в уклонении от налогов. Штраф $%s и конфискация имущества. Вас уволили.',
+  '💂‍♂️ Обыск! Налоговая полиция изъяла $%s наличных и заморозила активы. В камере будет время подумать.',
+];
+
+export function checkTaxAuthority(state: GameState): GameState {
+  const taxable = state.taxableIncome || 0;
+  if (taxable <= 0) return state;
+  const s = structuredClone(state);
+
+  const daysSinceTax = s.day - s.lastTaxDay;
+  if (daysSinceTax < 30) return s;
+
+  let taxRate = 0.1;
+  if (taxable > 10000) taxRate = 0.15;
+  if (taxable > 50000) taxRate = 0.2;
+  if (taxable > 200000) taxRate = 0.25;
+  const taxOwed = Math.round(taxable * taxRate);
+
+  const suspicion = Math.min(1, (daysSinceTax - 30) / 90) +
+    (taxOwed > 5000 ? 1 : 0) +
+    (taxOwed > 50000 ? 1 : 0) +
+    (s.shadowJob !== null ? 0.5 : 0);
+
+  if (Math.random() < Math.min(0.7, suspicion * 0.03)) {
+    const msg = TAX_EVENTS[Math.floor(Math.random() * TAX_EVENTS.length)];
+    const fine = Math.round(taxOwed * (1 + Math.random()));
+    const cashTake = Math.min(s.cash, Math.round(fine * 0.6));
+    s.cash = Math.max(0, s.cash - cashTake);
+    s.checking = Math.max(0, s.checking - Math.round(fine * 0.4));
+    s.creditScore = Math.max(300, s.creditScore - 50);
+    s.totalSpent += fine;
+    if (s.job !== null) {
+      s.job = null;
+      s.jobIndex = -1;
+      s.daysAtJob = 0;
+      s.performance = 0;
+    }
+    s.taxableIncome = Math.round((s.taxableIncome || 0) * 0.5);
+
+    const formattedMsg = msg.replace('%s', fine.toLocaleString());
+    s.eventLog.push(`День ${s.day}: ${formattedMsg}`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = formattedMsg;
+      s.eventType = 'bad';
+    }
+    return s;
+  }
+  return s;
+}
 
 export function checkAchievements(state: GameState): string[] {
   const newAchievements: string[] = [];
@@ -194,7 +388,7 @@ export function checkAchievements(state: GameState): string[] {
   if (state.stockPortfolio.reduce((a, sp) => { const st = state.stocks.find(s => s.symbol === sp.symbol); return a + (st ? st.price * sp.shares : 0); }, 0) >= 100000 && !state.achievements.includes('stock_whale')) newAchievements.push('stock_whale');
   if (state.shadowJob !== null && state.shadowJob.daysActive >= 30 && !state.achievements.includes('criminal')) newAchievements.push('criminal');
   if (state.riskLevel >= 80 && !state.achievements.includes('wanted')) newAchievements.push('wanted');
-  if (state.dirtyCash >= 100000 && !state.achievements.includes('dirty_million')) newAchievements.push('dirty_million');
+  if (state.dirtyCash >= 1000000 && !state.achievements.includes('dirty_million')) newAchievements.push('dirty_million');
   if (state.dirtyCash >= 50000 && !state.achievements.includes('dirty_fifty')) newAchievements.push('dirty_fifty');
 
   return newAchievements;
@@ -243,7 +437,7 @@ const ACHIEVEMENT_NAMES: Record<string, string> = {
   criminal: '🔫 Преступник — 30 дней в теневом бизнесе',
   wanted: '🚨 В розыске — Риск 80+',
   dirty_fifty: '💵 Тёмная половинка — $50K грязных денег',
-  dirty_million: '💰 Грязный миллион — $100K грязных денег',
+  dirty_million: '💰 Грязный миллион — $1M грязных денег',
 };
 
 export function getAchievementName(id: string): string {

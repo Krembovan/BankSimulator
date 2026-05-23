@@ -1,3 +1,8 @@
+export interface BlackMarketEntry {
+  name: string;
+  cleanPrice: number;
+}
+
 export interface GameState {
   day: number;
   cash: number;
@@ -30,6 +35,10 @@ export interface GameState {
   stocks: Stock[];
   cryptos: Crypto[];
   propertiesMarket: PropertyMarket[];
+  blackMarketInventory: BlackMarketEntry[];
+  lastTaxDay: number;
+  taxableIncome: number;
+  actionPoints: number;
   showEvent: boolean;
   eventMessage: string;
   eventType: 'good' | 'bad' | 'info';
@@ -44,12 +53,40 @@ export interface CDInvestment {
 
 export interface Loan {
   id: number;
-  type: 'personal' | 'mortgage' | 'business';
+  purpose: string;
+  borrowerName: string;
+  termMonths: number;
+  startDay: number;
   amount: number;
   remaining: number;
   rate: number;
   monthlyPayment: number;
   missedPayments: number;
+}
+
+export const LOAN_PURPOSE_NAMES: Record<string, string> = {
+  property: 'Недвижимость',
+  vehicle: 'Авто',
+  business: 'Бизнес',
+  other: 'Другое',
+};
+
+export function getLoanLimit(purpose: string): number {
+  switch (purpose) {
+    case 'property': return 1000000;
+    case 'vehicle': return 500000;
+    case 'business': return 500000;
+    default: return 100000;
+  }
+}
+
+export function getLoanRate(purpose: string): number {
+  switch (purpose) {
+    case 'property': return 0.06;
+    case 'vehicle': return 0.10;
+    case 'business': return 0.08;
+    default: return 0.12;
+  }
 }
 
 export interface StockPosition {
@@ -140,10 +177,10 @@ export interface MarketDay {
 }
 
 export const JOB_LIST = [
-  { name: 'Курьер', salary: 50, req: null },
   { name: 'Кассир', salary: 60, req: null },
   { name: 'Официант', salary: 70, req: null },
-  { name: 'Строитель', salary: 85, req: null },
+  { name: 'Курьер', salary: 80, req: 'Водительские права' },
+  { name: 'Строитель', salary: 85, req: 'Проф. сертификат' },
   { name: 'Водитель', salary: 95, req: 'Водительские права' },
   { name: 'Электрик', salary: 115, req: 'Проф. сертификат' },
   { name: 'Медсестра', salary: 140, req: 'Высшее образование' },
@@ -227,29 +264,40 @@ export const VEHICLES_LIST = [
   { name: 'Lada Niva (восстановленная)', price: 3000, depreciation: 0.14, isClassic: false },
   { name: 'Подержанный Honda Civic', price: 5000, depreciation: 0.12, isClassic: false },
   { name: 'Электромотоцикл', price: 8000, depreciation: 0.08, isClassic: false },
-  { name: 'Toyota Corolla', price: 15000, depreciation: 0.1, isClassic: false },
+  { name: 'Mazda MX-5 Miata', price: 12000, depreciation: 0.07, isClassic: false },
+  { name: 'Subaru Impreza WRX', price: 18000, depreciation: 0.08, isClassic: false },
+  { name: 'Toyota Camry', price: 20000, depreciation: 0.07, isClassic: false },
   { name: 'Honda Accord', price: 22000, depreciation: 0.09, isClassic: false },
-  { name: 'Ford Mustang', price: 35000, depreciation: 0.08, isClassic: false },
+  { name: 'Jeep Wrangler', price: 28000, depreciation: 0.06, isClassic: false },
+  { name: 'Ford Mustang GT', price: 35000, depreciation: 0.08, isClassic: false },
   { name: 'BMW 3 Series', price: 45000, depreciation: 0.1, isClassic: false },
   { name: 'Audi A4', price: 50000, depreciation: 0.09, isClassic: false },
   { name: 'Tesla Model 3', price: 55000, depreciation: 0.07, isClassic: false },
   { name: 'Mercedes C-Class', price: 60000, depreciation: 0.09, isClassic: false },
   { name: 'BMW 5 Series', price: 75000, depreciation: 0.08, isClassic: false },
+  { name: 'Nissan GT-R', price: 80000, depreciation: 0.06, isClassic: false },
   { name: 'Классический 1969 Mustang', price: 80000, depreciation: -0.02, isClassic: true },
   { name: 'Tesla Model S', price: 90000, depreciation: 0.06, isClassic: false },
+  { name: 'Toyota Land Cruiser', price: 95000, depreciation: 0.04, isClassic: false },
+  { name: 'Porsche 718 Cayman', price: 100000, depreciation: 0.05, isClassic: false },
   { name: 'Классический 1957 Chevy', price: 120000, depreciation: -0.015, isClassic: true },
+  { name: 'Audi R8', price: 130000, depreciation: 0.06, isClassic: false },
   { name: 'Porsche 911', price: 150000, depreciation: 0.04, isClassic: false },
   { name: 'Maybach S-Class', price: 200000, depreciation: 0.06, isClassic: false },
   { name: 'Классический 1967 Shelby GT', price: 200000, depreciation: -0.02, isClassic: true },
   { name: 'Lamborghini Urus', price: 250000, depreciation: 0.06, isClassic: false },
+  { name: 'Классический Porsche 911 Turbo', price: 280000, depreciation: -0.015, isClassic: true },
   { name: 'Aston Martin DB12', price: 300000, depreciation: 0.05, isClassic: false },
   { name: 'Классический Ferrari 250', price: 300000, depreciation: -0.01, isClassic: true },
   { name: 'Lamborghini Huracan', price: 350000, depreciation: 0.05, isClassic: false },
   { name: 'McLaren 720S', price: 350000, depreciation: 0.05, isClassic: false },
   { name: 'Bentley Continental', price: 350000, depreciation: 0.05, isClassic: false },
   { name: 'Ferrari F8', price: 400000, depreciation: 0.04, isClassic: false },
+  { name: 'Классический Lamborghini Countach', price: 450000, depreciation: -0.01, isClassic: true },
   { name: 'Rolls Royce Ghost', price: 500000, depreciation: 0.05, isClassic: false },
+  { name: 'Rimac Nevera', price: 2000000, depreciation: 0.02, isClassic: false },
   { name: 'Bugatti Chiron', price: 2500000, depreciation: 0.03, isClassic: false },
+  { name: 'Классический Ferrari F40', price: 3000000, depreciation: -0.015, isClassic: true },
 ];
 
 export const BUSINESSES_LIST = [
@@ -271,6 +319,11 @@ export const BUSINESSES_LIST = [
   { name: 'Клиника', type: 'Медицина', investment: 200000, dailyProfit: 500, maxProfit: 1500 },
   { name: 'Отель', type: 'Гостиницы', investment: 500000, dailyProfit: 800, maxProfit: 2000 },
   { name: 'Авиакомпания', type: 'Транспорт', investment: 1000000, dailyProfit: 1500, maxProfit: 4000 },
+  { name: 'Машиностроительный завод', type: 'Промышленность', investment: 80000, dailyProfit: 200, maxProfit: 600 },
+  { name: 'Металлообрабатывающий цех', type: 'Промышленность', investment: 50000, dailyProfit: 130, maxProfit: 350 },
+  { name: 'Станкостроительное бюро', type: 'Промышленность', investment: 120000, dailyProfit: 300, maxProfit: 800 },
+  { name: 'Завод по переработке', type: 'Промышленность', investment: 200000, dailyProfit: 450, maxProfit: 1200 },
+  { name: 'Промышленный хаб', type: 'Промышленность', investment: 500000, dailyProfit: 900, maxProfit: 2500 },
 ];
 
 export const SIDE_HUSTLES = [
@@ -289,6 +342,9 @@ export const SHADOW_JOBS = [
   { name: 'Хакерство', income: 200, risk: 3 },
   { name: 'Организация подпольного казино', income: 300, risk: 5 },
   { name: 'Торговля оружием', income: 500, risk: 7 },
+  { name: 'Наркотрафик', income: 800, risk: 10 },
+  { name: 'Кибер-вымогательство', income: 400, risk: 4 },
+  { name: 'Даркнет-маркет', income: 650, risk: 6 },
 ];
 
 export const BLACK_MARKET_ITEMS = [
@@ -298,9 +354,12 @@ export const BLACK_MARKET_ITEMS = [
   { name: 'Краденый велосипед', price: 150, cleanPrice: 400 },
   { name: 'Контрабандные часы', price: 2000, cleanPrice: 5000 },
   { name: 'Краденый инструмент', price: 300, cleanPrice: 800 },
+  { name: 'Угон авто (ключи в комплекте)', price: 3000, cleanPrice: 8000 },
+  { name: 'Крипто-кошелёк (ворованный)', price: 1500, cleanPrice: 4000 },
+  { name: 'Военный GPS-глушитель', price: 5000, cleanPrice: 12000 },
 ];
 
-const EDUCATION_COST = 5000;
+const EDUCATION_COSTS = [200, 500, 2000, 5000, 5000, 8000, 10000, 15000, 20000];
 const EDUCATION_NAMES = [
   'Водительские права',
   'Проф. сертификат',
@@ -313,4 +372,4 @@ const EDUCATION_NAMES = [
   'Большой опыт',
 ];
 
-export { EDUCATION_COST, EDUCATION_NAMES };
+export { EDUCATION_COSTS, EDUCATION_NAMES };

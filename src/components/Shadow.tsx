@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './Shadow.css';
 import type { GameState } from '../types';
-import { SHADOW_JOBS, BLACK_MARKET_ITEMS, SIDE_HUSTLES } from '../types';
+import { SHADOW_JOBS } from '../types';
 import { startShadowJob, stopShadowJob, launderMoney } from '../game/engine';
 
 interface ShadowProps {
@@ -73,7 +73,7 @@ export default function Shadow({ state, setState }: ShadowProps) {
               onChange={e => setLaunderAmt(e.target.value)}
               style={{ flex: 1 }}
             />
-            <button className="btn-warning btn-sm" onClick={doLaunder} disabled={!state.dirtyCash}>
+            <button className="btn-warning btn-sm" onClick={doLaunder} disabled={!state.dirtyCash || state.actionPoints < 2}>
               {state.dirtyCash > 0 ? 'Отмыть' : 'Нечего мыть'}
             </button>
           </div>
@@ -117,31 +117,6 @@ export default function Shadow({ state, setState }: ShadowProps) {
               ))}
             </div>
           )}
-        </div>
-
-        <div className="card">
-          <span className="section-title">🏴 Чёрный рынок</span>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
-            Товары с дисконтом. Без вопросов, но только за наличные.
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {BLACK_MARKET_ITEMS.map((item, i) => (
-              <div key={i} className="job-list-item">
-                <div className="jli-left">
-                  <span className="jli-title">{item.name}</span>
-                  <span className="jli-req">{formatMoney(item.price)} · реальная цена {formatMoney(item.cleanPrice)}</span>
-                </div>
-                <div className="jli-right">
-                  <span style={{ fontSize: 11, color: 'var(--accent-green)' }}>
-                    −{Math.round((1 - item.price / item.cleanPrice) * 100)}%
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 12, padding: '10px 12px', background: 'rgba(127, 29, 29, 0.2)', borderRadius: 6, border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            💡 Чёрный рынок временно недоступен. Ищите контакты через теневые дела.
-          </div>
         </div>
       </div>
     </div>

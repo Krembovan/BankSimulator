@@ -66,7 +66,7 @@ export default function RealEstate({ state, setState }: RealEstateProps) {
                     <div className={`re-owned-change ${change >= 0 ? 'text-green' : 'text-red'}`}>
                       {change >= 0 ? '+' : ''}{change.toFixed(1)}%
                     </div>
-                    <button className="btn-danger btn-sm" onClick={() => setState(sellProperty(state, p.id))}>Продать</button>
+                    <button className="btn-danger btn-sm" onClick={() => setState(sellProperty(state, p.id))} disabled={state.actionPoints < 1}>Продать</button>
                   </div>
                 </div>
               );
@@ -93,7 +93,7 @@ export default function RealEstate({ state, setState }: RealEstateProps) {
                   Down: {formatMoney(Math.round(p.price * 0.20))}
                   </div>
                 {!owned ? (
-                  <button className="btn-primary" onClick={() => setState(buyProperty(state, p.id))}>Купить</button>
+                  <button className="btn-primary" onClick={() => setState(buyProperty(state, p.id))} disabled={state.actionPoints < 2}>Купить</button>
                 ) : (
                   <span style={{ fontSize: 12, color: 'var(--accent-green)', fontWeight: 600, padding: '5px 0' }}>✓ В собственности</span>
                 )}

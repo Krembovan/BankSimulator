@@ -1,0 +1,294 @@
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 6, 14, 0.85);
+  backdrop-filter: blur(8px);
+  animation: tutorialFadeIn 0.35s ease;
+}
+
+@keyframes tutorialFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tutorial-card {
+  position: relative;
+  width: 580px;
+  max-width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: linear-gradient(145deg, rgba(18, 28, 48, 0.97), rgba(10, 17, 33, 0.99));
+  border: 1px solid rgba(51, 65, 85, 0.4);
+  border-radius: var(--radius-xl);
+  padding: 44px 36px 20px;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(59, 130, 246, 0.04);
+  animation: tutorialSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tutorial-card::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tutorial-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tutorial-card::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+@keyframes tutorialSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tutorial-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  overflow: hidden;
+}
+
+.tutorial-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), #60a5fa, #818cf8);
+  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+.tutorial-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tutorial-close::before {
+  content: '✕';
+}
+
+.tutorial-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.tutorial-counter {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.tutorial-counter-current {
+  color: var(--accent-blue);
+  font-size: 16px;
+}
+
+.tutorial-counter-sep {
+  color: rgba(255, 255, 255, 0.15);
+  margin: 0 1px;
+}
+
+.tutorial-counter-total {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.tutorial-icon-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.tutorial-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  font-size: 38px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04));
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 22px;
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
+  animation: tutorialIconPop 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tutorialIconPop {
+  0% {
+    transform: scale(0.6) rotate(-8deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+
+.tutorial-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+
+.tutorial-subtitle {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.25);
+  margin-bottom: 18px;
+}
+
+.tutorial-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tutorial-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.tutorial-text strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tutorial-highlight {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.03));
+  border: 1px solid rgba(245, 158, 11, 0.12);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--accent-amber);
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+
+.highlight-symbol {
+  flex-shrink: 0;
+  font-size: 14px;
+  margin-top: 1px;
+}
+
+.tutorial-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tutorial-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.tutorial-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.25s ease;
+}
+
+.tutorial-dot.active {
+  background: var(--accent-blue);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+  width: 24px;
+  border-radius: 4px;
+}
+
+.tutorial-dot:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.tutorial-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.tutorial-hint-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.hint-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.hint-label {
+  color: rgba(255, 255, 255, 0.15);
+  margin-right: 4px;
+}
+
+.hint-divider {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 2px;
+}

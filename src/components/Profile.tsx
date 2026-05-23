@@ -1,7 +1,7 @@
 import './Profile.css';
 import type { GameState } from '../types';
-import { JOB_LIST, EDUCATION_NAMES, EDUCATION_COST, SIDE_HUSTLES } from '../types';
-import { investInEducation, startSideHustle, stopSideHustle } from '../game/engine';
+import { JOB_LIST, EDUCATION_NAMES, EDUCATION_COSTS, SIDE_HUSTLES } from '../types';
+import { investInEducation, startSideHustle, stopSideHustle, quitJob } from '../game/engine';
 
 interface ProfileProps {
   state: GameState;
@@ -20,7 +20,8 @@ export default function Profile({ state, setState }: ProfileProps) {
   };
 
   const applyJob = (idx: number) => {
-    if (idx <= state.jobIndex) return;
+    if (idx === state.jobIndex) return;
+    if (state.job !== null && idx <= state.jobIndex) return;
     const job = JOB_LIST[idx];
     if (job.req !== null && !state.education.includes(job.req)) return;
     const s = { ...state, job: job.name, jobIndex: idx, daysAtJob: 0, performance: 50 };
@@ -48,8 +49,17 @@ export default function Profile({ state, setState }: ProfileProps) {
                     {JOB_LIST[state.jobIndex]?.req && `Требуется: ${JOB_LIST[state.jobIndex].req}`}
                   </div>
                 </div>
-                <div className="job-right">
+                <div className="job-right" style={{ gap: 4 }}>
                   <div className="job-salary">+${JOB_LIST[state.jobIndex]?.salary}/day</div>
+                  <button 
+  className="btn-danger btn-sm" 
+  onClick={() => { 
+    if (window.confirm('Вы уверены, что хотите уволиться?\nПотеряете все дни и продуктивность.')) 
+      setState(quitJob(state)); 
+  }}
+>
+  Уволиться
+</button>
                 </div>
               </div>
 
@@ -116,7 +126,7 @@ export default function Profile({ state, setState }: ProfileProps) {
             {JOB_LIST.map((job, idx) => {
               const canApply = job.req === null || state.education.includes(job.req);
               const isCurrent = state.jobIndex === idx;
-              const isAvailable = idx > (state.jobIndex >= 0 ? state.jobIndex : -1);
+              const isAvailable = state.job === null ? true : idx > state.jobIndex;
               return (
                 <div key={idx} className={`job-list-item ${isCurrent ? 'current-job-item' : ''}`}>
                   <div className="jli-left">
@@ -189,6 +199,7 @@ export default function Profile({ state, setState }: ProfileProps) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
             {availableEducations.map(name => {
               const idx = EDUCATION_NAMES.indexOf(name);
+              const cost = EDUCATION_COSTS[idx];
               const canBuy = idx === 0 || state.education.includes(EDUCATION_NAMES[idx - 1]);
               return (
                 <div key={name} className="job-list-item">
@@ -200,18 +211,17 @@ export default function Profile({ state, setState }: ProfileProps) {
                   </div>
                   <div className="jli-right">
                     <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>
-                      {formatMoney(EDUCATION_COST)}
+                      {formatMoney(cost)}
                     </span>
-                    {canBuy && (
-                      <button
-                        className="btn-primary btn-sm"
-                        onClick={() => handleEducation(name)}
-                        disabled={state.cash < EDUCATION_COST}
-                        style={{ opacity: state.cash < EDUCATION_COST ? 0.5 : 1 }}
-                      >
-                        {state.cash >= EDUCATION_COST ? 'Учиться' : 'Нужны деньги'}
-                      </button>
-                    )}
+{canBuy && (
+  <button
+    className="btn-primary btn-sm"
+    onClick={() => handleEducation(name)}
+    disabled={state.cash < cost || state.actionPoints < 1}
+  >
+    {state.cash < cost ? 'Нужны деньги' : state.actionPoints < 1 ? 'Нужно AP' : 'Учиться'}
+  </button>
+)}
                     {!canBuy && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>🔒</span>}
                   </div>
                 </div>

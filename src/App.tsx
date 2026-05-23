@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import type { GameState } from './types';
 import { createInitialState, saveGame, loadGame, deleteSave } from './game/save';
 import { advanceDay } from './game/engine';
-import { getNetWorth } from './game/events';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Bank from './components/Bank';
@@ -15,13 +14,13 @@ import Profile from './components/Profile';
 import Crypto from './components/Crypto';
 import Shadow from './components/Shadow';
 import EventModal from './components/EventModal';
+import Tutorial from './components/Tutorial';
 
 export default function App() {
   const [state, setState] = useState<GameState | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [autoMode, setAutoMode] = useState(false);
   const [hasSave, setHasSave] = useState(false);
-  const autoRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     const saved = loadGame();
@@ -37,41 +36,33 @@ export default function App() {
     }
   }, [state]);
 
-  useEffect(() => {
-    if (autoMode) {
-      autoRef.current = setInterval(() => {
-        setState(prev => prev ? advanceDay(prev) : prev);
-      }, 500);
-    } else {
-      if (autoRef.current) {
-        clearInterval(autoRef.current);
-        autoRef.current = null;
-      }
-    }
-    return () => {
-      if (autoRef.current) clearInterval(autoRef.current);
-    };
-  }, [autoMode]);
+  const handleAdvanceDay = useCallback(() => {
+    setState(prev => prev ? advanceDay(prev) : prev);
+  }, []);
 
   const handleNewGame = () => {
     setState(createInitialState());
     deleteSave();
     setHasSave(false);
+    setShowTutorial(true);
   };
 
   const handleLoadGame = () => {
     const saved = loadGame();
     if (saved) {
       setState(saved);
+      if (saved.day === 1) {
+        setShowTutorial(true);
+      }
     }
   };
 
-  const handleAdvanceDay = useCallback(() => {
-    setState(prev => prev ? advanceDay(prev) : prev);
-  }, []);
-
   const handleDismissEvent = useCallback(() => {
     setState(prev => prev ? { ...prev, showEvent: false } : prev);
+  }, []);
+
+  const handleCloseTutorial = useCallback(() => {
+    setShowTutorial(false);
   }, []);
 
   if (!state) {
@@ -80,7 +71,7 @@ export default function App() {
         <div className="new-game-card">
           <div className="ng-logo">🏦</div>
           <h1>Bank Simulator</h1>
-          <p className="ng-subtitle">Стройте свою финансовую империю с нуля.<br />Зарабатывайте, копите, инвестируйте — достигните $10M капитала!</p>
+          <p className="ng-subtitle">Стройте свою финансовую империю с нуля.<br />Зарабатывайте, копите, инвестируйте!</p>
           <div className="features">
             <div className="feature"><span className="f-icon">💼</span><span className="f-label">Career</span></div>
             <div className="feature"><span className="f-icon">🏦</span><span className="f-label">Banking</span></div>
@@ -101,34 +92,9 @@ export default function App() {
     );
   }
 
-  const nw = getNetWorth(state);
-  const won = nw >= 10000000;
-
-  if (won) {
-    return (
-      <div className="new-game-overlay">
-        <div className="new-game-card">
-          <div className="win-screen">
-            <span className="trophy">👑</span>
-            <h1>Вы победили!</h1>
-            <p>
-              Вы достигли <strong>$10,000,000</strong> капитала за {state.day} дней!<br />
-              Вы финансовый гений!
-            </p>
-            <div className="win-stat">
-              <div className="ws-label">Финальный капитал</div>
-              <div className="ws-value">${nw.toLocaleString()}</div>
-            </div>
-            <button className="start-btn" onClick={handleNewGame}>▶ Сыграть ещё</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard state={state} onAdvanceDay={handleAdvanceDay} onToggleAuto={() => setAutoMode(!autoMode)} autoMode={autoMode} />;
+      case 'dashboard': return <Dashboard state={state} onAdvanceDay={handleAdvanceDay} />;
       case 'bank': return <Bank state={state} setState={setState} />;
       case 'stocks': return <Stocks state={state} setState={setState} />;
       case 'realestate': return <RealEstate state={state} setState={setState} />;
@@ -137,19 +103,20 @@ export default function App() {
       case 'business': return <Business state={state} setState={setState} />;
       case 'shadow': return <Shadow state={state} setState={setState} />;
       case 'profile': return <Profile state={state} setState={setState} />;
-      default: return <Dashboard state={state} onAdvanceDay={handleAdvanceDay} onToggleAuto={() => setAutoMode(!autoMode)} autoMode={autoMode} />;
+      default: return <Dashboard state={state} onAdvanceDay={handleAdvanceDay} />;
     }
   };
 
   return (
     <div className="app-layout">
-      <Sidebar state={state} activeTab={activeTab} onTabChange={setActiveTab} />
+      <Sidebar state={state} activeTab={activeTab} onTabChange={setActiveTab} onRestart={handleNewGame} onShowTutorial={() => setShowTutorial(true)} />
       <div className="app-content">
         {renderContent()}
       </div>
       {state.showEvent && (
         <EventModal key={state.eventMessage + state.day} message={state.eventMessage} type={state.eventType} onClose={handleDismissEvent} />
       )}
+      {showTutorial && <Tutorial onClose={handleCloseTutorial} />}
     </div>
   );
 }

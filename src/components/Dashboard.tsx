@@ -2,12 +2,11 @@ import './Dashboard.css';
 import { getNetWorth, getAchievementName } from '../game/events';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
 import type { GameState } from '../types';
+import { MAX_ACTIONS } from '../game/engine';
 
 interface DashboardProps {
   state: GameState;
   onAdvanceDay: () => void;
-  onToggleAuto: () => void;
-  autoMode: boolean;
 }
 
 function formatMoney(n: number) {
@@ -16,7 +15,7 @@ function formatMoney(n: number) {
   return '$' + n.toLocaleString();
 }
 
-export default function Dashboard({ state, onAdvanceDay, onToggleAuto, autoMode }: DashboardProps) {
+export default function Dashboard({ state, onAdvanceDay }: DashboardProps) {
   const nw = getNetWorth(state);
   const totalAssets = state.cash + state.checking + state.savings +
     state.cds.reduce((a, c) => a + c.amount, 0) +
@@ -43,7 +42,6 @@ export default function Dashboard({ state, onAdvanceDay, onToggleAuto, autoMode 
             <span className="stat-icon">💰</span>
           </div>
           <div className="value gradient-text-green">{formatMoney(nw)}</div>
-          <div className="sub">Цель: $10M &middot; {Math.min(100, (nw / 10000000) * 100).toFixed(1)}%</div>
         </div>
         <div className="stat-card">
           <div className="stat-top">
@@ -72,16 +70,16 @@ export default function Dashboard({ state, onAdvanceDay, onToggleAuto, autoMode 
       </div>
 
       <div className="day-controls">
-        <button className="day-btn" onClick={onAdvanceDay}>
-          ▶ Следующий день
-        </button>
-        <button className={`auto-btn ${autoMode ? 'active' : ''}`} onClick={onToggleAuto}>
-          {autoMode ? '⏸ Стоп' : '▶ Авто'}
-        </button>
         <div className="day-info">
           📅 День <strong>{state.day}</strong>
           {state.job && <span>• <span style={{ color: 'var(--accent-green)' }}>{state.job}</span></span>}
         </div>
+        <div className="day-info" style={{ fontSize: 13 }}>
+          ⚡ <strong style={{ color: state.actionPoints > 3 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{state.actionPoints}</strong>/{MAX_ACTIONS} действий
+        </div>
+        <button className="day-btn" onClick={onAdvanceDay}>
+          ▶ Следующий день
+        </button>
       </div>
 
       <div className="dashboard-grid">

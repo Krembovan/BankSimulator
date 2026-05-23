@@ -1,6 +1,6 @@
 import './Business.css';
 import type { GameState } from '../types';
-import { startBusiness, upgradeBusiness, hireEmployee } from '../game/engine';
+import { startBusiness, upgradeBusiness, hireEmployee, sellBusiness } from '../game/engine';
 import { BUSINESSES_LIST } from '../types';
 
 interface BusinessProps {
@@ -51,8 +51,9 @@ export default function Business({ state, setState }: BusinessProps) {
                 <div className="b-right">
                   <div className="b-owned-value">{formatMoney(b.value)}</div>
                   <div className="b-owned-actions">
-                    <button className="btn-primary btn-sm" onClick={() => setState(upgradeBusiness(state, b.id))}>Улучшить</button>
-                    <button className="btn-ghost btn-sm" onClick={() => setState(hireEmployee(state, b.id))}>Нанять</button>
+                    <button className="btn-primary btn-sm" onClick={() => setState(upgradeBusiness(state, b.id))} disabled={state.cash < b.level * 10000 || state.actionPoints < 1}>Улучшить ${(b.level * 10000).toLocaleString()}</button>
+                    <button className="btn-ghost btn-sm" onClick={() => setState(hireEmployee(state, b.id))} disabled={state.actionPoints < 1}>Нанять $5K</button>
+                    <button className="btn-danger btn-sm" onClick={() => { if (confirm(`Продать ${b.name} за ${formatMoney(Math.round(b.value * 0.6))}?`)) setState(sellBusiness(state, b.id)); }} disabled={state.actionPoints < 1}>Продать</button>
                   </div>
                 </div>
               </div>
@@ -73,7 +74,7 @@ export default function Business({ state, setState }: BusinessProps) {
               <button
                 className="btn-success"
                 onClick={() => setState(startBusiness(state, idx))}
-                disabled={state.cash + state.checking < b.investment}
+                disabled={state.cash + state.checking < b.investment || state.actionPoints < 2}
                 style={{ opacity: state.cash + state.checking < b.investment ? 0.5 : 1 }}
               >
                 {state.cash + state.checking >= b.investment ? 'Запустить' : 'Нужно ' + formatMoney(b.investment - state.cash - state.checking)}

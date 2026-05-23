@@ -8,6 +8,8 @@ interface SidebarProps {
   state: GameState;
   activeTab: string;
   onTabChange: (tab: string) => void;
+  onRestart: () => void;
+  onShowTutorial: () => void;
 }
 
 const NAV_ITEMS = [
@@ -22,12 +24,16 @@ const NAV_ITEMS = [
   { id: 'shadow', label: 'Тень', icon: '🕶️' },
 ];
 
-export default function Sidebar({ state, activeTab, onTabChange }: SidebarProps) {
+export default function Sidebar({ state, activeTab, onTabChange, onRestart, onShowTutorial }: SidebarProps) {
   const [showReport, setShowReport] = useState(false);
+  const [showRestartConfirm, setShowRestartConfirm] = useState(false);
   const [reportText, setReportText] = useState('');
   const nw = getNetWorth(state);
-  const pctToGoal = Math.min(100, (nw / 10000000) * 100);
-  const formatMoney = (n: number) => '$' + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const formatMoney = (n: number) => {
+    if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000) return '$' + (n / 1_000).toFixed(1) + 'K';
+    return '$' + n.toLocaleString();
+  };
 
   return (
     <div className="sidebar">
@@ -53,7 +59,11 @@ export default function Sidebar({ state, activeTab, onTabChange }: SidebarProps)
       <div className="sidebar-footer">
         <div className="day-display">
           📅 День <span className="day-num">{state.day}</span>
-          <button className="sb-report-btn" onClick={() => setShowReport(!showReport)} title="Сообщить о баге">🐛</button>
+          <div className="sb-btn-group">
+            <button className="sb-text-btn sb-restart-btn" onClick={() => setShowRestartConfirm(true)}>🔄 Сброс</button>
+            <button className="sb-text-btn sb-report-btn" onClick={() => setShowReport(!showReport)}>🐛 Баг</button>
+            <button className="sb-text-btn sb-tutorial-btn" onClick={onShowTutorial}>❓</button>
+          </div>
         </div>
         {showReport && (
           <div className="sb-report-inline">
@@ -70,12 +80,18 @@ export default function Sidebar({ state, activeTab, onTabChange }: SidebarProps)
             </div>
           </div>
         )}
+        {showRestartConfirm && (
+          <div className="sb-restart-confirm">
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Начать новую игру? Весь прогресс будет потерян!</span>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <button className="btn-danger btn-sm" onClick={() => { onRestart(); setShowRestartConfirm(false); }}>Да, сбросить</button>
+              <button className="btn-ghost btn-sm" onClick={() => setShowRestartConfirm(false)}>Отмена</button>
+            </div>
+          </div>
+        )}
         <div className="nw-preview">
           <div className="label">Капитал</div>
           <div className="value">{formatMoney(nw)}</div>
-          <div className="progress-to-goal">
-            <div className="progress-fill" style={{ width: `${pctToGoal}%` }} />
-          </div>
         </div>
       </div>
     </div>

@@ -99,7 +99,7 @@ export default function Crypto({ state, setState }: CryptoProps) {
                             value={buyAmounts[crypto.symbol] || ''}
                             onChange={e => setBuyAmounts(prev => ({ ...prev, [crypto.symbol]: e.target.value }))}
                           />
-                          <button className="btn-success btn-sm" onClick={() => handleBuy(crypto.symbol)}>Купить</button>
+                          <button className="btn-success btn-sm" onClick={() => handleBuy(crypto.symbol)} disabled={state.actionPoints < 1}>Купить</button>
                         </div>
                       </td>
                       <td>
@@ -111,7 +111,7 @@ export default function Crypto({ state, setState }: CryptoProps) {
                               value={sellCoins[crypto.symbol] || ''}
                               onChange={e => setSellCoins(prev => ({ ...prev, [crypto.symbol]: e.target.value }))}
                             />
-                            <button className="btn-danger btn-sm" onClick={() => handleSell(crypto.symbol)}>Продать</button>
+                            <button className="btn-danger btn-sm" onClick={() => handleSell(crypto.symbol)} disabled={state.actionPoints < 1}>Продать</button>
                           </div>
                         ) : (
                           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>

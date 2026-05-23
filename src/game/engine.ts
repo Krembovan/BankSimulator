@@ -1,16 +1,26 @@
 import type { GameState } from '../types';
-import { JOB_LIST, VEHICLES_LIST, BUSINESSES_LIST, EDUCATION_COST, EDUCATION_NAMES, SIDE_HUSTLES, SHADOW_JOBS } from '../types';
-import { checkRandomEvent, checkAchievements, getNetWorth, getAchievementName, applyMonthlyExpenses, checkCareerEvent, checkPoliceRaid, checkShadowOpportunity } from './events';
+import { JOB_LIST, VEHICLES_LIST, BUSINESSES_LIST, EDUCATION_COSTS, EDUCATION_NAMES, SIDE_HUSTLES, SHADOW_JOBS, BLACK_MARKET_ITEMS, getLoanRate, getLoanLimit, LOAN_PURPOSE_NAMES } from '../types';
+import { checkRandomEvent, checkAchievements, getNetWorth, getAchievementName, applyMonthlyExpenses, checkCareerEvent, checkPoliceRaid, checkShadowOpportunity, checkCollectors, checkTaxAuthority } from './events';
+
+export const MAX_ACTIONS = 10;
+
+function spendAP(s: GameState, cost: number): boolean {
+  if ((s.actionPoints ?? MAX_ACTIONS) < cost) return false;
+  s.actionPoints -= cost;
+  return true;
+}
 
 export function advanceDay(state: GameState): GameState {
-  const s = JSON.parse(JSON.stringify(state)) as GameState;
+  let s = structuredClone(state);
   s.day += 1;
+  s.actionPoints = MAX_ACTIONS;
 
   if (s.job !== null && s.jobIndex >= 0) {
     const job = JOB_LIST[s.jobIndex];
     const salary = job.salary;
     s.cash += salary;
     s.totalEarned += salary;
+    s.taxableIncome = (s.taxableIncome || 0) + salary;
     s.daysAtJob += 1;
     s.performance = Math.min(100, s.performance + 1);
 
@@ -109,24 +119,41 @@ export function advanceDay(state: GameState): GameState {
     const profit = Math.round(b.dailyProfit * variance * effMultiplier);
     s.cash += profit;
     s.totalEarned += profit;
+    s.taxableIncome = (s.taxableIncome || 0) + profit;
   });
 
   if (s.day % 30 === 0 && s.lastExpenseDay < s.day) {
     applyMonthlyExpenses(s);
   }
 
-  const policeResult = checkPoliceRaid(s);
-  if (policeResult.showEvent) {
-    s.showEvent = true;
-    s.eventMessage = policeResult.eventMessage;
-    s.eventType = policeResult.eventType;
-  }
-
-  const careerResult = checkCareerEvent(s);
-  if (careerResult.showEvent) {
-    s.showEvent = true;
-    s.eventMessage = careerResult.eventMessage;
-    s.eventType = careerResult.eventType;
+  if (s.day % 30 === 0) {
+    s.loans.forEach(loan => {
+      if (loan.remaining <= 0) return;
+      const payment = Math.min(loan.monthlyPayment, loan.remaining);
+      if (s.cash >= payment) {
+        s.cash -= payment;
+        loan.remaining = Math.max(0, loan.remaining - payment);
+        loan.missedPayments = 0;
+        s.totalSpent += payment;
+        if (loan.remaining <= 0) {
+          s.eventLog.push(`День ${s.day}: 💳 Кредит на "${loan.purpose}" полностью погашен`);
+        }
+      } else if (s.cash + s.checking >= payment) {
+        const diff = payment - s.cash;
+        s.cash = 0;
+        s.checking -= diff;
+        loan.remaining = Math.max(0, loan.remaining - payment);
+        loan.missedPayments = 0;
+        s.totalSpent += payment;
+        if (loan.remaining <= 0) {
+          s.eventLog.push(`День ${s.day}: 💳 Кредит на "${loan.purpose}" полностью погашен`);
+        }
+      } else {
+        loan.missedPayments = (loan.missedPayments || 0) + 1;
+        s.eventLog.push(`День ${s.day}: ⚠️ Пропущен платёж по кредиту "${loan.purpose}" (${loan.missedPayments} мес.)`);
+      }
+    });
+    s.loans = s.loans.filter(l => l.remaining > 0);
   }
 
   const nw = getNetWorth(s);
@@ -135,12 +162,11 @@ export function advanceDay(state: GameState): GameState {
   s.marketData.push({ day: s.day, netWorth: nw, cash: s.cash });
   if (s.marketData.length > 500) s.marketData.shift();
 
-  const shadowOppResult = checkShadowOpportunity(s);
-  if (shadowOppResult.showEvent) {
-    s.showEvent = true;
-    s.eventMessage = shadowOppResult.eventMessage;
-    s.eventType = shadowOppResult.eventType;
-  }
+  s = checkCollectors(s);
+  s = checkTaxAuthority(s);
+  s = checkPoliceRaid(s);
+  s = checkCareerEvent(s);
+  s = checkShadowOpportunity(s);
 
   const newAchievements = checkAchievements(s);
   newAchievements.forEach(a => {
@@ -151,18 +177,14 @@ export function advanceDay(state: GameState): GameState {
   });
 
   const eventResult = checkRandomEvent(s);
-  s.showEvent = eventResult.showEvent || s.showEvent;
-  s.eventMessage = eventResult.eventMessage || s.eventMessage;
-  s.eventType = (eventResult.eventType !== 'info' ? eventResult.eventType : s.eventType) as 'good' | 'bad' | 'info';
-  s.stocks = eventResult.stocks || s.stocks;
-  s.propertiesMarket = eventResult.propertiesMarket || s.propertiesMarket;
-  s.cryptos = eventResult.cryptos || s.cryptos;
+  s = eventResult;
 
   return s;
 }
 
 export function buyStock(state: GameState, symbol: string, amount: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
   const stock = s.stocks.find(st => st.symbol === symbol);
   if (!stock || amount <= 0) return state;
 
@@ -192,7 +214,8 @@ export function buyStock(state: GameState, symbol: string, amount: number): Game
 }
 
 export function sellStock(state: GameState, symbol: string, sharesToSell: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
   const pos = s.stockPortfolio.find(sp => sp.symbol === symbol);
   if (!pos || sharesToSell <= 0 || sharesToSell > pos.shares) return state;
 
@@ -211,7 +234,8 @@ export function sellStock(state: GameState, symbol: string, sharesToSell: number
 }
 
 export function buyCrypto(state: GameState, symbol: string, amount: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
   const crypto = s.cryptos.find(c => c.symbol === symbol);
   if (!crypto || amount <= 0) return state;
 
@@ -241,7 +265,8 @@ export function buyCrypto(state: GameState, symbol: string, amount: number): Gam
 }
 
 export function sellCrypto(state: GameState, symbol: string, coinsToSell: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
   const pos = s.cryptoPortfolio.find(cp => cp.symbol === symbol);
   if (!pos || coinsToSell <= 0 || coinsToSell > pos.coins) return state;
 
@@ -260,7 +285,7 @@ export function sellCrypto(state: GameState, symbol: string, coinsToSell: number
 }
 
 export function startSideHustle(state: GameState, hustleIndex: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
   const hustle = SIDE_HUSTLES[hustleIndex];
   if (!hustle) return state;
   s.sideHustle = { name: hustle.name, dailyPay: hustle.pay, daysActive: 0 };
@@ -269,7 +294,7 @@ export function startSideHustle(state: GameState, hustleIndex: number): GameStat
 }
 
 export function stopSideHustle(state: GameState): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
   if (s.sideHustle) {
     s.eventLog.push(`День ${s.day}: Закончена подработка: ${s.sideHustle.name} (${s.sideHustle.daysActive} дней)`);
     s.sideHustle = null;
@@ -278,7 +303,7 @@ export function stopSideHustle(state: GameState): GameState {
 }
 
 export function startShadowJob(state: GameState, jobIndex: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
   const job = SHADOW_JOBS[jobIndex];
   if (!job) return state;
   s.shadowJob = { name: job.name, dailyIncome: job.income, riskPerDay: job.risk, daysActive: 0 };
@@ -287,7 +312,7 @@ export function startShadowJob(state: GameState, jobIndex: number): GameState {
 }
 
 export function stopShadowJob(state: GameState): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
   if (s.shadowJob) {
     s.eventLog.push(`День ${s.day}: Закончено теневое дело: ${s.shadowJob.name} (${s.shadowJob.daysActive} дней)`);
     s.shadowJob = null;
@@ -296,22 +321,31 @@ export function stopShadowJob(state: GameState): GameState {
 }
 
 export function launderMoney(state: GameState, amount: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 2)) return state;
   if (amount <= 0 || amount > s.dirtyCash) return state;
   const fee = Math.round(amount * 0.3);
   const clean = amount - fee;
   s.dirtyCash -= amount;
   s.cash += clean;
   s.totalEarned += clean;
+  s.taxableIncome = (s.taxableIncome || 0) + clean;
   s.riskLevel = Math.max(0, s.riskLevel - Math.round(amount / 2000));
   s.eventLog.push(`День ${s.day}: 🧼 Отмыто $${amount} (комиссия $${fee}, получено $${clean})`);
   return s;
 }
 
-export function getLoan(state: GameState, type: 'personal' | 'mortgage' | 'business', amount: number): GameState {
-  const s = { ...state };
-  const maxLoan = type === 'personal' ? 10000 : type === 'mortgage' ? 500000 : 100000;
-  const rate = type === 'personal' ? 0.12 : type === 'mortgage' ? 0.06 : 0.08;
+export function getLoan(state: GameState, params: {
+  purpose: string;
+  borrowerName: string;
+  termMonths: number;
+  amount: number;
+}): GameState {
+  const s = structuredClone(state);
+  if (!spendAP(s, 2)) return state;
+  const { purpose, borrowerName, termMonths, amount } = params;
+  const maxLoan = getLoanLimit(purpose);
+  const rate = getLoanRate(purpose);
   const adjRate = rate + (0.05 * (650 - s.creditScore) / 350);
 
   const loanAmount = Math.min(amount, maxLoan);
@@ -319,37 +353,49 @@ export function getLoan(state: GameState, type: 'personal' | 'mortgage' | 'busin
 
   const id = s.loans.length > 0 ? Math.max(...s.loans.map(l => l.id)) + 1 : 1;
   const monthlyRatio = adjRate / 12;
-  const payments = type === 'mortgage' ? 360 : 120;
-  const monthlyPayment = Math.round(loanAmount * monthlyRatio * Math.pow(1 + monthlyRatio, payments) / (Math.pow(1 + monthlyRatio, payments) - 1));
+  const monthlyPayment = Math.round(loanAmount * monthlyRatio * Math.pow(1 + monthlyRatio, termMonths) / (Math.pow(1 + monthlyRatio, termMonths) - 1));
 
   s.loans.push({
     id,
-    type,
+    purpose,
+    borrowerName,
+    termMonths,
+    startDay: s.day,
     amount: loanAmount,
     remaining: loanAmount,
     rate: adjRate,
-    monthlyPayment: isNaN(monthlyPayment) ? Math.round(loanAmount / payments) : monthlyPayment,
+    monthlyPayment: isNaN(monthlyPayment) ? Math.round(loanAmount / termMonths) : monthlyPayment,
     missedPayments: 0,
   });
   s.cash += loanAmount;
-  s.totalEarned += loanAmount;
-  s.eventLog.push(`День ${s.day}: Взят ${type === 'personal' ? 'личный' : type === 'mortgage' ? 'ипотечный' : 'бизнес'} кредит $${loanAmount} под ${(adjRate * 100).toFixed(1)}%`);
+  s.eventLog.push(`День ${s.day}: 💳 Взят кредит на ${LOAN_PURPOSE_NAMES[purpose] || purpose} $${loanAmount} под ${(adjRate * 100).toFixed(1)}% на ${termMonths} мес.`);
 
   return s;
 }
 
 export function payLoan(state: GameState, loanId: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
   const loan = s.loans.find(l => l.id === loanId);
   if (!loan) return state;
 
-  if (s.cash >= loan.remaining) {
-    s.cash -= loan.remaining;
+  const spendCash = (amount: number) => {
+    if (s.cash >= amount) {
+      s.cash -= amount;
+    } else {
+      const diff = amount - s.cash;
+      s.cash = 0;
+      s.checking -= diff;
+    }
+  };
+
+  if (s.cash + s.checking >= loan.remaining) {
+    spendCash(loan.remaining);
     s.totalSpent += loan.remaining;
     s.loans = s.loans.filter(l => l.id !== loanId);
-    s.eventLog.push(`День ${s.day}: Погашен ${loan.type === 'personal' ? 'личный' : loan.type === 'mortgage' ? 'ипотечный' : 'бизнес'} кредит ($${loan.remaining})`);
-  } else if (s.cash >= loan.monthlyPayment) {
-    s.cash -= loan.monthlyPayment;
+    s.eventLog.push(`День ${s.day}: 💳 Погашен кредит на "${loan.purpose}" ($${loan.remaining})`);
+    s.creditScore = Math.min(850, s.creditScore + 5);
+  } else if (s.cash + s.checking >= loan.monthlyPayment) {
+    spendCash(loan.monthlyPayment);
     loan.remaining -= loan.monthlyPayment;
     loan.missedPayments = 0;
     s.creditScore = Math.min(850, s.creditScore + 2);
@@ -359,7 +405,8 @@ export function payLoan(state: GameState, loanId: number): GameState {
 }
 
 export function buyProperty(state: GameState, propertyId: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 2)) return state;
   const marketProp = s.propertiesMarket.find(p => p.id === propertyId);
   if (!marketProp) return state;
 
@@ -384,11 +431,14 @@ export function buyProperty(state: GameState, propertyId: number): GameState {
 
   s.loans.push({
     id: loanId,
-    type: 'mortgage',
+    purpose: 'property',
+    borrowerName: 'Ипотечный заём',
+    termMonths: 120,
+    startDay: s.day,
     amount: mortgageAmt,
     remaining: mortgageAmt,
     rate,
-    monthlyPayment: isNaN(monthlyPayment) ? Math.round(mortgageAmt / 360) : monthlyPayment,
+    monthlyPayment: isNaN(monthlyPayment) ? Math.round(mortgageAmt / 120) : monthlyPayment,
     missedPayments: 0,
   });
 
@@ -409,7 +459,8 @@ export function buyProperty(state: GameState, propertyId: number): GameState {
 }
 
 export function sellProperty(state: GameState, propertyId: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
   const prop = s.properties.find(p => p.id === propertyId);
   if (!prop) return state;
 
@@ -430,7 +481,8 @@ export function sellProperty(state: GameState, propertyId: number): GameState {
 }
 
 export function buyVehicle(state: GameState, vehicleIndex: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
   const v = VEHICLES_LIST[vehicleIndex];
   if (!v) return state;
 
@@ -460,8 +512,28 @@ export function buyVehicle(state: GameState, vehicleIndex: number): GameState {
   return s;
 }
 
+export function upgradeVehicle(state: GameState, vehicleId: number): GameState {
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
+  const v = s.vehicles.find(veh => veh.id === vehicleId);
+  if (!v) return state;
+
+  const cost = Math.round(v.currentValue * 0.15);
+  if (s.cash < cost) return state;
+
+  s.cash -= cost;
+  v.currentValue = Math.round(v.currentValue * 1.25);
+  if (v.depreciation > 0) {
+    v.depreciation = Math.max(0.02, v.depreciation - 0.02);
+  }
+  s.totalSpent += cost;
+  s.eventLog.push(`День ${s.day}: 🔧 Улучшен ${v.name} за $${cost} (стоимость +25%)`);
+  return s;
+}
+
 export function sellVehicle(state: GameState, vehicleId: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
   const v = s.vehicles.find(veh => veh.id === vehicleId);
   if (!v) return state;
 
@@ -473,7 +545,8 @@ export function sellVehicle(state: GameState, vehicleId: number): GameState {
 }
 
 export function startBusiness(state: GameState, businessIndex: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 2)) return state;
   const bDef = BUSINESSES_LIST[businessIndex];
   if (!bDef) return state;
 
@@ -505,8 +578,23 @@ export function startBusiness(state: GameState, businessIndex: number): GameStat
   return s;
 }
 
+export function sellBusiness(state: GameState, businessId: number): GameState {
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
+  const bus = s.businesses.find(b => b.id === businessId);
+  if (!bus) return state;
+
+  s.cash += Math.round(bus.value * 0.6);
+  s.totalEarned += Math.round(bus.value * 0.6);
+  const name = bus.name;
+  s.businesses = s.businesses.filter(b => b.id !== businessId);
+  s.eventLog.push(`День ${s.day}: 🏪 Продан бизнес: ${name} за $${Math.round(bus.value * 0.6)}`);
+  return s;
+}
+
 export function upgradeBusiness(state: GameState, businessId: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
   const bus = s.businesses.find(b => b.id === businessId);
   if (!bus) return state;
 
@@ -524,7 +612,8 @@ export function upgradeBusiness(state: GameState, businessId: number): GameState
 }
 
 export function hireEmployee(state: GameState, businessId: number): GameState {
-  const s = { ...state };
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
   const bus = s.businesses.find(b => b.id === businessId);
   if (!bus) return state;
 
@@ -538,20 +627,90 @@ export function hireEmployee(state: GameState, businessId: number): GameState {
   return s;
 }
 
+export function buyBlackMarketItem(state: GameState, itemIndex: number): GameState {
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
+  const item = BLACK_MARKET_ITEMS[itemIndex];
+  if (!item) return state;
+  if (s.dirtyCash < item.price) return state;
+
+  s.dirtyCash -= item.price;
+  s.blackMarketInventory.push({ name: item.name, cleanPrice: item.cleanPrice });
+  s.totalSpent += item.price;
+  s.eventLog.push(`День ${s.day}: Куплено на чёрном рынке: ${item.name} за $${item.price}`);
+  return s;
+}
+
+export function fenceBlackMarketItem(state: GameState, inventoryIndex: number): GameState {
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
+  const entry = s.blackMarketInventory[inventoryIndex];
+  if (!entry) return state;
+
+  s.cash += entry.cleanPrice;
+  s.totalEarned += entry.cleanPrice;
+  s.blackMarketInventory.splice(inventoryIndex, 1);
+  s.eventLog.push(`День ${s.day}: 🏴 Продано с чёрного рынка: ${entry.name} за $${entry.cleanPrice}`);
+  return s;
+}
+
+export function quitJob(state: GameState): GameState {
+  const s = structuredClone(state);
+  if (s.job === null) return state;
+  s.eventLog.push(`День ${s.day}: Уволен с должности ${s.job}`);
+  s.job = null;
+  s.jobIndex = -1;
+  s.daysAtJob = 0;
+  s.performance = 0;
+  return s;
+}
+
+export function payTaxes(state: GameState): GameState {
+  const s = structuredClone(state);
+  const taxable = s.taxableIncome || 0;
+  if (taxable <= 0) return s;
+
+  let taxRate = 0.1;
+  if (taxable > 10000) taxRate = 0.15;
+  if (taxable > 50000) taxRate = 0.2;
+  if (taxable > 200000) taxRate = 0.25;
+
+  const taxAmount = Math.round(taxable * taxRate);
+  if (s.cash + s.checking < taxAmount) return s;
+
+  if (s.cash >= taxAmount) {
+    s.cash -= taxAmount;
+  } else {
+    const diff = taxAmount - s.cash;
+    s.cash = 0;
+    s.checking = Math.max(0, s.checking - diff);
+  }
+
+  s.totalSpent += taxAmount;
+  s.taxableIncome = 0;
+  s.lastTaxDay = s.day;
+  s.creditScore = Math.min(850, s.creditScore + 5);
+  s.eventLog.push(`День ${s.day}: 🧾 Налоги уплачены: $${taxAmount.toLocaleString()} (доход $${taxable.toLocaleString()}, ставка ${(taxRate * 100).toFixed(0)}%)`);
+  return s;
+}
+
 export function investInEducation(state: GameState, educationName: string): GameState {
-  const s = { ...state };
-  if (s.cash < EDUCATION_COST) return state;
+  const s = structuredClone(state);
+  if (!spendAP(s, 1)) return state;
+  const idx = EDUCATION_NAMES.indexOf(educationName);
+  if (idx === -1) return state;
+  const cost = EDUCATION_COSTS[idx];
+  if (s.cash < cost) return state;
   if (s.education.includes(educationName)) return state;
 
-  const idx = EDUCATION_NAMES.indexOf(educationName);
   if (idx > 0) {
     const prereq = EDUCATION_NAMES[idx - 1];
     if (!s.education.includes(prereq)) return state;
   }
 
-  s.cash -= EDUCATION_COST;
-  s.totalSpent += EDUCATION_COST;
+  s.cash -= cost;
+  s.totalSpent += cost;
   s.education.push(educationName);
-  s.eventLog.push(`День ${s.day}: Получено образование: ${educationName}`);
+  s.eventLog.push(`День ${s.day}: Получено образование: ${educationName} за $${cost}`);
   return s;
 }
