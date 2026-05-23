@@ -3,6 +3,7 @@ import './App.css';
 import type { GameState } from './types';
 import { createInitialState, saveGame, loadGame, deleteSave } from './game/save';
 import { advanceDay } from './game/engine';
+import { handlePoliceChoice, doPrisonTask } from './game/events';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Bank from './components/Bank';
@@ -15,6 +16,7 @@ import Crypto from './components/Crypto';
 import Shadow from './components/Shadow';
 import EventModal from './components/EventModal';
 import Tutorial from './components/Tutorial';
+import ChoiceModal from './components/ChoiceModal';
 
 export default function App() {
   const [state, setState] = useState<GameState | null>(null);
@@ -69,6 +71,14 @@ export default function App() {
     setShowTutorial(false);
   }, []);
 
+  const handleChoice = useCallback((action: string) => {
+    setState(prev => prev ? handlePoliceChoice(prev, action as 'bribe' | 'jail') : prev);
+  }, []);
+
+  const handlePrisonTask = useCallback(() => {
+    setState(prev => prev ? doPrisonTask(prev) : prev);
+  }, []);
+
   if (!state) {
     return (
       <div className="new-game-overlay">
@@ -119,6 +129,17 @@ export default function App() {
       </div>
       {state.showEvent && (
         <EventModal key={state.eventMessage + state.day} message={state.eventMessage} type={state.eventType} onClose={handleDismissEvent} />
+      )}
+      {state.showChoice && state.choiceData && (
+        <ChoiceModal title={state.choiceData.title} message={state.choiceData.message} options={state.choiceData.options} onChoose={handleChoice} />
+      )}
+      {state.inPrison && !state.showChoice && (
+        <div className="prison-banner">
+          <span>⛓️ Тюрьма день {state.prisonDays}/{state.prisonSentence} · Заданий УДО: {state.prisonTasksDone}/3</span>
+          {state.actionPoints > 0 && state.prisonTasksDone < 3 && (
+            <button className="btn-warning btn-sm" onClick={handlePrisonTask}>📋 Выполнить задание (1 AP)</button>
+          )}
+        </div>
       )}
       {showTutorial && <Tutorial onClose={handleCloseTutorial} />}
     </div>

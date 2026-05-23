@@ -1,6 +1,6 @@
 import type { GameState } from '../types';
 import { JOB_LIST, VEHICLES_LIST, BUSINESSES_LIST, EDUCATION_COSTS, EDUCATION_NAMES, SIDE_HUSTLES, SHADOW_JOBS, BLACK_MARKET_ITEMS, getLoanRate, getLoanLimit, LOAN_PURPOSE_NAMES } from '../types';
-import { checkRandomEvent, checkAchievements, getNetWorth, getAchievementName, applyMonthlyExpenses, checkCareerEvent, checkPoliceRaid, checkShadowOpportunity, checkCollectors, checkTaxAuthority } from './events';
+import { checkRandomEvent, checkAchievements, getNetWorth, getAchievementName, applyMonthlyExpenses, checkCareerEvent, checkPoliceRaid, checkShadowOpportunity, checkCollectors, checkTaxAuthority, processPrisonDay } from './events';
 
 export const MAX_ACTIONS = 10;
 
@@ -13,7 +13,17 @@ function spendAP(s: GameState, cost: number): boolean {
 export function advanceDay(state: GameState): GameState {
   let s = structuredClone(state);
   s.day += 1;
-  s.actionPoints = MAX_ACTIONS;
+  s.actionPoints = s.inPrison ? 2 : MAX_ACTIONS;
+
+  if (s.inPrison) {
+    s.eventLog.push(`День ${s.day}: ⛓️ Вы в тюрьме. Доступно 2 AP.`);
+    const nw = getNetWorth(s);
+    if (nw > s.highestNetWorth) s.highestNetWorth = nw;
+    s.marketData.push({ day: s.day, netWorth: nw, cash: s.cash });
+    if (s.marketData.length > 500) s.marketData.shift();
+    s = processPrisonDay(s);
+    return s;
+  }
 
   if (s.job !== null && s.jobIndex >= 0) {
     const job = JOB_LIST[s.jobIndex];
@@ -75,7 +85,7 @@ export function advanceDay(state: GameState): GameState {
     const trend = (Math.random() - 0.48) * 0.01;
     stock.price = Math.max(1, Math.round(stock.price * (1 + change + trend) * 100) / 100);
 
-    if (s.day % 30 === 0 && stock.dividendYield > 0) {
+    if (s.day % 15 === 0 && stock.dividendYield > 0) {
       const pos = s.stockPortfolio.find(sp => sp.symbol === stock.symbol);
       if (pos) {
         const dividend = Math.round(pos.shares * stock.price * stock.dividendYield / 12 * 100) / 100;
@@ -91,6 +101,18 @@ export function advanceDay(state: GameState): GameState {
     const trend = (Math.random() - 0.47) * 0.02;
     crypto.price = Math.max(0.001, Math.round(crypto.price * (1 + change + trend) * 100) / 100);
   });
+
+  const totalCryptoValue = s.cryptoPortfolio.reduce((a, cp) => {
+    const c = s.cryptos.find(cr => cr.symbol === cp.symbol);
+    return a + (c ? c.price * cp.coins : 0);
+  }, 0);
+  if (totalCryptoValue > 0) {
+    const stakeReward = Math.round(totalCryptoValue * 0.001 * 100) / 100;
+    if (stakeReward > 0) {
+      s.cash += stakeReward;
+      s.totalEarned += stakeReward;
+    }
+  }
 
   s.properties.forEach(p => {
     const marketProp = s.propertiesMarket.find(mp => mp.name === p.name);
@@ -178,6 +200,8 @@ export function advanceDay(state: GameState): GameState {
 
   const eventResult = checkRandomEvent(s);
   s = eventResult;
+
+  s = processPrisonDay(s);
 
   return s;
 }
@@ -571,6 +595,7 @@ export function startBusiness(state: GameState, businessIndex: number): GameStat
     level: 1,
     employees: 0,
     reputation: 50,
+    paperwork: 0,
   });
 
   s.totalSpent += bDef.investment;

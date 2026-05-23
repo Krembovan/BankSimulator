@@ -246,21 +246,40 @@ export function checkCollectors(state: GameState): GameState {
 }
 
 export function checkPoliceRaid(state: GameState): GameState {
-  if (state.riskLevel <= 0) return state;
+  if (state.riskLevel <= 0 || state.inPrison) return state;
   const s = structuredClone(state);
   const raidChance = s.riskLevel / 500;
   if (Math.random() < raidChance) {
-    const fine = Math.round(s.dirtyCash * (0.3 + Math.random() * 0.4));
     const confiscated = Math.round(s.dirtyCash * (0.1 + Math.random() * 0.3));
+    const bribeAmount = Math.round(s.cash * (0.15 + Math.random() * 0.25));
+    const sentence = 3 + Math.floor(Math.random() * 5);
+
+    s.showChoice = true;
+    s.choiceData = {
+      title: '🚔 Полицейский рейд!',
+      message: `Вас накрыли! dirty cash: −$${confiscated.toLocaleString()}.`,
+      options: [
+        {
+          label: `💰 Дать взятку $${bribeAmount.toLocaleString()}`,
+          action: 'bribe',
+          cost: bribeAmount,
+          icon: '💰',
+          consequence: 'Отделаетесь штрафом и потерей грязных денег.',
+        },
+        {
+          label: `⛓️ Сесть в тюрьму (${sentence} дней)`,
+          action: 'jail',
+          cost: 0,
+          icon: '⛓️',
+          consequence: `Срок ${sentence} дней. Можно выйти раньше по УДО (выполнив 3 задания).`,
+        },
+      ],
+    };
     s.dirtyCash = Math.max(0, s.dirtyCash - confiscated);
-    s.cash = Math.max(0, s.cash - fine);
-    s.riskLevel = Math.max(0, s.riskLevel - 30);
-    s.eventLog.push(`День ${s.day}: 🚔 Полицейский рейд! Штраф $${fine}, конфисковано $${confiscated}`);
-    if (!s.showEvent) {
-      s.showEvent = true;
-      s.eventMessage = `🚔 Полицейский рейд! Штраф $${fine}, конфисковано $${confiscated} грязных денег.`;
-      s.eventType = 'bad';
-    }
+    s.riskLevel = Math.max(0, s.riskLevel - 20);
+    s.policeBribeAmount = bribeAmount;
+    s.prisonSentence = sentence;
+    s.eventLog.push(`День ${s.day}: 🚔 Полицейский рейд! Выбор: взятка $${bribeAmount} или тюрьма ${sentence} дней.`);
     return s;
   }
   return s;
@@ -442,4 +461,75 @@ const ACHIEVEMENT_NAMES: Record<string, string> = {
 
 export function getAchievementName(id: string): string {
   return ACHIEVEMENT_NAMES[id] || id;
+}
+
+export function handlePoliceChoice(state: GameState, action: 'bribe' | 'jail'): GameState {
+  const s = structuredClone(state);
+  s.showChoice = false;
+  s.choiceData = null;
+
+  if (action === 'bribe') {
+    const bribe = s.policeBribeAmount;
+    s.cash = Math.max(0, s.cash - bribe);
+    s.totalSpent += bribe;
+    s.riskLevel = Math.max(0, s.riskLevel - 15);
+    s.eventLog.push(`День ${s.day}: 💰 Взятка полиции $${bribe}. Свободен!`);
+  } else {
+    s.inPrison = true;
+    s.prisonDays = 0;
+    s.prisonTasksDone = 0;
+    if (s.job !== null) {
+      s.job = null;
+      s.jobIndex = -1;
+      s.daysAtJob = 0;
+      s.performance = 0;
+    }
+    s.eventLog.push(`⛓️ День ${s.day}: Вы в тюрьме! Срок ${s.prisonSentence} дней.`);
+  }
+  return s;
+}
+
+export function processPrisonDay(state: GameState): GameState {
+  if (!state.inPrison) return state;
+  const s = structuredClone(state);
+  s.prisonDays += 1;
+
+  if (s.prisonDays >= s.prisonSentence) {
+    s.inPrison = false;
+    s.prisonDays = 0;
+    s.prisonSentence = 0;
+    s.prisonTasksDone = 0;
+    s.eventLog.push(`День ${s.day}: 🕊️ Вы вышли на свободу!`);
+    if (!s.showEvent) {
+      s.showEvent = true;
+      s.eventMessage = '🕊️ Вы отбыли срок и вышли на свободу!';
+      s.eventType = 'good';
+    }
+  } else {
+    const daysLeft = s.prisonSentence - s.prisonDays;
+    s.eventLog.push(`День ${s.day}: ⛓️ Тюрьма день ${s.prisonDays}/${s.prisonSentence}. Осталось ${daysLeft} дн.`);
+  }
+  return s;
+}
+
+export function doPrisonTask(state: GameState): GameState {
+  if (!state.inPrison) return state;
+  const s = structuredClone(state);
+  const TASKS = [
+    '📝 Написать жалобу на условия содержания',
+    '🧹 Убрать камеру',
+    '📖 Прочитать Уголовный кодекс',
+    '🍳 Поработать на кухне',
+    '📞 Позвонить адвокату',
+  ];
+  const task = TASKS[Math.floor(Math.random() * TASKS.length)];
+  s.prisonTasksDone += 1;
+  s.eventLog.push(`День ${s.day}: ${task}. Заданий: ${s.prisonTasksDone}/3.`);
+
+  if (s.prisonTasksDone >= 3) {
+    const reduction = Math.ceil(s.prisonSentence * 0.5);
+    s.prisonSentence = Math.max(1, s.prisonSentence - reduction);
+    s.eventLog.push(`⚖️ УДО! Срок сокращён на ${reduction} дней!`);
+  }
+  return s;
 }

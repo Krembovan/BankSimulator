@@ -3,6 +3,20 @@ export interface BlackMarketEntry {
   cleanPrice: number;
 }
 
+export interface ChoiceData {
+  title: string;
+  message: string;
+  options: ChoiceOption[];
+}
+
+export interface ChoiceOption {
+  label: string;
+  action: string;
+  cost: number;
+  icon: string;
+  consequence: string;
+}
+
 export interface GameState {
   day: number;
   cash: number;
@@ -42,6 +56,13 @@ export interface GameState {
   showEvent: boolean;
   eventMessage: string;
   eventType: 'good' | 'bad' | 'info';
+  showChoice: boolean;
+  choiceData: ChoiceData | null;
+  inPrison: boolean;
+  prisonDays: number;
+  prisonSentence: number;
+  prisonTasksDone: number;
+  policeBribeAmount: number;
 }
 
 export interface CDInvestment {
@@ -168,6 +189,7 @@ export interface Business {
   level: number;
   employees: number;
   reputation: number;
+  paperwork: number;
 }
 
 export interface MarketDay {
@@ -200,30 +222,30 @@ export const JOB_LIST = [
 ];
 
 export const STOCK_LIST: Stock[] = [
-  { symbol: 'ITEC', name: 'ИнноТех', sector: 'Технологии', price: 150, volatility: 0.04, dividendYield: 0.005 },
-  { symbol: 'CLDS', name: 'ОблакоСинк', sector: 'Технологии', price: 85, volatility: 0.05, dividendYield: 0.002 },
-  { symbol: 'DVT', name: 'ДатаВолт', sector: 'Технологии', price: 120, volatility: 0.045, dividendYield: 0.003 },
-  { symbol: 'GRNP', name: 'ЗелёнаяЭнергия', sector: 'Энергетика', price: 65, volatility: 0.035, dividendYield: 0.015 },
-  { symbol: 'PTMX', name: 'ПетроМакс', sector: 'Энергетика', price: 95, volatility: 0.04, dividendYield: 0.025 },
-  { symbol: 'BLC', name: 'БлюКапитал', sector: 'Финансы', price: 110, volatility: 0.03, dividendYield: 0.02 },
-  { symbol: 'FNF', name: 'ФинПоток', sector: 'Финансы', price: 75, volatility: 0.05, dividendYield: 0.008 },
-  { symbol: 'VITA', name: 'ВитаЗдоровье', sector: 'Здравоохранение', price: 140, volatility: 0.035, dividendYield: 0.01 },
-  { symbol: 'MDCR', name: 'МедЯдро', sector: 'Здравоохранение', price: 90, volatility: 0.04, dividendYield: 0.012 },
-  { symbol: 'LXBR', name: 'ЛюксБренд', sector: 'Потребление', price: 200, volatility: 0.04, dividendYield: 0.008 },
-  { symbol: 'FRMK', name: 'СвежийРынок', sector: 'Потребление', price: 45, volatility: 0.025, dividendYield: 0.018 },
-  { symbol: 'STLW', name: 'СтальПром', sector: 'Промышленность', price: 70, volatility: 0.035, dividendYield: 0.02 },
-  { symbol: 'BLDC', name: 'СтройКорп', sector: 'Промышленность', price: 55, volatility: 0.04, dividendYield: 0.015 },
-  { symbol: 'VISM', name: 'ВижнМедиа', sector: 'Развлечения', price: 130, volatility: 0.05, dividendYield: 0.004 },
-  { symbol: 'GMFR', name: 'ИгроКузня', sector: 'Развлечения', price: 100, volatility: 0.06, dividendYield: 0.002 },
-  { symbol: 'AERO', name: 'АэроФлотТех', sector: 'Промышленность', price: 80, volatility: 0.05, dividendYield: 0.01 },
-  { symbol: 'BIOG', name: 'БиоТехГен', sector: 'Здравоохранение', price: 160, volatility: 0.06, dividendYield: 0.003 },
-  { symbol: 'CYBR', name: 'КиберЩит', sector: 'Технологии', price: 95, volatility: 0.055, dividendYield: 0.001 },
-  { symbol: 'GOLDX', name: 'ЗолотойЗапас', sector: 'Финансы', price: 180, volatility: 0.025, dividendYield: 0.03 },
-  { symbol: 'EDUC', name: 'ЭдюТек', sector: 'Технологии', price: 40, volatility: 0.06, dividendYield: 0.001 },
-  { symbol: 'SHIP', name: 'МорскиеЛинии', sector: 'Промышленность', price: 60, volatility: 0.045, dividendYield: 0.02 },
-  { symbol: 'EATM', name: 'ЭкоПродукты', sector: 'Потребление', price: 55, volatility: 0.03, dividendYield: 0.015 },
-  { symbol: 'SPACE', name: 'КосмоИндустрия', sector: 'Технологии', price: 250, volatility: 0.08, dividendYield: 0.001 },
-  { symbol: 'DEFN', name: 'ОборонПром', sector: 'Промышленность', price: 130, volatility: 0.04, dividendYield: 0.018 },
+  { symbol: 'ITEC', name: 'ИнноТех', sector: 'Технологии', price: 150, volatility: 0.04, dividendYield: 0.03 },
+  { symbol: 'CLDS', name: 'ОблакоСинк', sector: 'Технологии', price: 85, volatility: 0.05, dividendYield: 0.02 },
+  { symbol: 'DVT', name: 'ДатаВолт', sector: 'Технологии', price: 120, volatility: 0.045, dividendYield: 0.025 },
+  { symbol: 'GRNP', name: 'ЗелёнаяЭнергия', sector: 'Энергетика', price: 65, volatility: 0.035, dividendYield: 0.04 },
+  { symbol: 'PTMX', name: 'ПетроМакс', sector: 'Энергетика', price: 95, volatility: 0.04, dividendYield: 0.05 },
+  { symbol: 'BLC', name: 'БлюКапитал', sector: 'Финансы', price: 110, volatility: 0.03, dividendYield: 0.04 },
+  { symbol: 'FNF', name: 'ФинПоток', sector: 'Финансы', price: 75, volatility: 0.05, dividendYield: 0.035 },
+  { symbol: 'VITA', name: 'ВитаЗдоровье', sector: 'Здравоохранение', price: 140, volatility: 0.035, dividendYield: 0.03 },
+  { symbol: 'MDCR', name: 'МедЯдро', sector: 'Здравоохранение', price: 90, volatility: 0.04, dividendYield: 0.035 },
+  { symbol: 'LXBR', name: 'ЛюксБренд', sector: 'Потребление', price: 200, volatility: 0.04, dividendYield: 0.025 },
+  { symbol: 'FRMK', name: 'СвежийРынок', sector: 'Потребление', price: 45, volatility: 0.025, dividendYield: 0.04 },
+  { symbol: 'STLW', name: 'СтальПром', sector: 'Промышленность', price: 70, volatility: 0.035, dividendYield: 0.045 },
+  { symbol: 'BLDC', name: 'СтройКорп', sector: 'Промышленность', price: 55, volatility: 0.04, dividendYield: 0.035 },
+  { symbol: 'VISM', name: 'ВижнМедиа', sector: 'Развлечения', price: 130, volatility: 0.05, dividendYield: 0.02 },
+  { symbol: 'GMFR', name: 'ИгроКузня', sector: 'Развлечения', price: 100, volatility: 0.06, dividendYield: 0.015 },
+  { symbol: 'AERO', name: 'АэроФлотТех', sector: 'Промышленность', price: 80, volatility: 0.05, dividendYield: 0.03 },
+  { symbol: 'BIOG', name: 'БиоТехГен', sector: 'Здравоохранение', price: 160, volatility: 0.06, dividendYield: 0.02 },
+  { symbol: 'CYBR', name: 'КиберЩит', sector: 'Технологии', price: 95, volatility: 0.055, dividendYield: 0.015 },
+  { symbol: 'GOLDX', name: 'ЗолотойЗапас', sector: 'Финансы', price: 180, volatility: 0.025, dividendYield: 0.06 },
+  { symbol: 'EDUC', name: 'ЭдюТек', sector: 'Технологии', price: 40, volatility: 0.06, dividendYield: 0.01 },
+  { symbol: 'SHIP', name: 'МорскиеЛинии', sector: 'Промышленность', price: 60, volatility: 0.045, dividendYield: 0.04 },
+  { symbol: 'EATM', name: 'ЭкоПродукты', sector: 'Потребление', price: 55, volatility: 0.03, dividendYield: 0.035 },
+  { symbol: 'SPACE', name: 'КосмоИндустрия', sector: 'Технологии', price: 250, volatility: 0.08, dividendYield: 0.01 },
+  { symbol: 'DEFN', name: 'ОборонПром', sector: 'Промышленность', price: 130, volatility: 0.04, dividendYield: 0.04 },
 ];
 
 export const CRYPTO_LIST: Crypto[] = [

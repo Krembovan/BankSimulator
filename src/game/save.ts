@@ -37,6 +37,20 @@ function migrateState(state: any): GameState {
     });
   }
 
+  state.showChoice = state.showChoice ?? false;
+  state.choiceData = state.choiceData ?? null;
+  state.inPrison = state.inPrison ?? false;
+  state.prisonDays = state.prisonDays ?? 0;
+  state.prisonSentence = state.prisonSentence ?? 0;
+  state.prisonTasksDone = state.prisonTasksDone ?? 0;
+  state.policeBribeAmount = state.policeBribeAmount ?? 0;
+
+  if (state.businesses) {
+    state.businesses.forEach((b: any) => {
+      b.paperwork = b.paperwork ?? 0;
+    });
+  }
+
   return state as GameState;
 }
 
@@ -80,6 +94,13 @@ export function createInitialState(): GameState {
     showEvent: false,
     eventMessage: '',
     eventType: 'info',
+    showChoice: false,
+    choiceData: null,
+    inPrison: false,
+    prisonDays: 0,
+    prisonSentence: 0,
+    prisonTasksDone: 0,
+    policeBribeAmount: 0,
   };
 }
 

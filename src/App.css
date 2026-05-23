@@ -197,3 +197,30 @@
   color: var(--accent-green);
   font-family: 'JetBrains Mono', monospace;
 }
+
+.prison-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(185, 28, 28, 0.2));
+  border-top: 1px solid rgba(239, 68, 68, 0.3);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fca5a5;
+  backdrop-filter: blur(8px);
+}
+
+.prison-banner span {
+  color: #fca5a5;
+}
+
+.prison-banner .btn-warning {
+  flex-shrink: 0;
+}
