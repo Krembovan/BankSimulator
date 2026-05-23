@@ -278,6 +278,8 @@ export default function Tutorial({ onClose }: TutorialProps) {
   const isLast = step === STEPS.length - 1;
   const isFirst = step === 0;
 
+  console.log('Tutorial mounted, step:', step, 'isLast:', isLast);
+
   const goNext = useCallback(() => {
     if (isLast) {
       onClose();

@@ -41,10 +41,14 @@ export default function App() {
   }, []);
 
   const handleNewGame = () => {
-    setState(createInitialState());
+    console.log('handleNewGame called');
+    const fresh = createInitialState();
+    console.log('fresh state day:', fresh.day);
+    setState(fresh);
     deleteSave();
     setHasSave(false);
     setShowTutorial(true);
+    console.log('showTutorial set to true');
   };
 
   const handleLoadGame = () => {
@@ -109,6 +113,7 @@ export default function App() {
 
   return (
     <div className="app-layout">
+      {console.log('Rendering app-layout, showTutorial:', showTutorial, 'state.day:', state.day)}
       <Sidebar state={state} activeTab={activeTab} onTabChange={setActiveTab} onRestart={handleNewGame} onShowTutorial={() => setShowTutorial(true)} />
       <div className="app-content">
         {renderContent()}
